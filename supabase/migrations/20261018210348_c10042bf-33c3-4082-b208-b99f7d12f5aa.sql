@@ -1,0 +1,12 @@
+ALTER FUNCTION public.current_email() SET search_path TO 'public';
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.log_change() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.guard_sponsor_update() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.can_access_sponsor(uuid) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.quota_allows(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.can_access_sponsor(uuid) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.quota_allows(uuid, text) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.is_email_allowed(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_email_allowed(text) TO anon, authenticated, service_role;
