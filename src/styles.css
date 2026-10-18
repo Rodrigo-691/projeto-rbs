@@ -4,10 +4,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Planeta Atlântida provisional identity: sunset coral + ocean deep + sand. */
+/* Planeta Atlântida official identity: cyan #03A1D0, pink #FF3E9A, dark #212529,
+   earth #674522, highlight yellow #FFF48A. Montserrat for display, Jakarta for body. */
 
 @theme inline {
-  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -36,6 +37,7 @@
   --color-ocean: var(--ocean);
   --color-ocean-foreground: var(--ocean-foreground);
   --color-sun: var(--sun);
+  --color-earth: var(--earth);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -53,43 +55,44 @@
 
 :root {
   --radius: 0.9rem;
-  --background: oklch(0.975 0.015 80);
-  --foreground: oklch(0.22 0.06 250);
-  --card: oklch(0.995 0.005 80);
-  --card-foreground: oklch(0.22 0.06 250);
-  --popover: oklch(0.995 0.005 80);
-  --popover-foreground: oklch(0.22 0.06 250);
-  --primary: oklch(0.66 0.2 35);
-  --primary-foreground: oklch(0.99 0.01 80);
-  --secondary: oklch(0.93 0.03 80);
-  --secondary-foreground: oklch(0.22 0.06 250);
-  --muted: oklch(0.94 0.02 80);
-  --muted-foreground: oklch(0.48 0.04 250);
-  --accent: oklch(0.88 0.12 85);
-  --accent-foreground: oklch(0.22 0.06 250);
+  --background: oklch(0.985 0.006 245);
+  --foreground: oklch(0.262 0.0095 248.19);
+  --card: oklch(0.998 0.002 245);
+  --card-foreground: oklch(0.262 0.0095 248.19);
+  --popover: oklch(0.998 0.002 245);
+  --popover-foreground: oklch(0.262 0.0095 248.19);
+  --primary: oklch(0.662 0.1284 227.8);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.02 227);
+  --secondary-foreground: oklch(0.262 0.0095 248.19);
+  --muted: oklch(0.955 0.012 240);
+  --muted-foreground: oklch(0.52 0.03 248);
+  --accent: oklch(0.678 0.2371 356.87);
+  --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.89 0.025 80);
-  --input: oklch(0.89 0.025 80);
-  --ring: oklch(0.66 0.2 35);
-  --ocean: oklch(0.3 0.09 245);
-  --ocean-foreground: oklch(0.97 0.02 80);
-  --sun: oklch(0.82 0.16 75);
-  --chart-1: oklch(0.66 0.2 35);
-  --chart-2: oklch(0.45 0.12 240);
-  --chart-3: oklch(0.82 0.16 75);
-  --chart-4: oklch(0.65 0.12 190);
-  --chart-5: oklch(0.55 0.18 10);
-  --gradient-sunset: linear-gradient(135deg, var(--primary), var(--sun));
-  --gradient-ocean: linear-gradient(160deg, var(--ocean), oklch(0.42 0.12 230));
+  --border: oklch(0.9 0.012 240);
+  --input: oklch(0.9 0.012 240);
+  --ring: oklch(0.662 0.1284 227.8);
+  --ocean: oklch(0.29 0.05 248);
+  --ocean-foreground: oklch(0.98 0.006 245);
+  --sun: oklch(0.954 0.1282 103.29);
+  --earth: oklch(0.421 0.0683 64.83);
+  --chart-1: oklch(0.662 0.1284 227.8);
+  --chart-2: oklch(0.678 0.2371 356.87);
+  --chart-3: oklch(0.421 0.0683 64.83);
+  --chart-4: oklch(0.78 0.1 205);
+  --chart-5: oklch(0.85 0.14 100);
+  --gradient-sunset: linear-gradient(135deg, var(--primary), var(--accent));
+  --gradient-ocean: linear-gradient(160deg, var(--ocean), oklch(0.42 0.11 232));
   --shadow-soft: 0 10px 30px -12px color-mix(in oklab, var(--ocean) 25%, transparent);
   --sidebar: var(--ocean);
   --sidebar-foreground: var(--ocean-foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.38 0.09 245);
+  --sidebar-accent: oklch(0.38 0.07 240);
   --sidebar-accent-foreground: var(--ocean-foreground);
-  --sidebar-border: oklch(0.38 0.09 245);
+  --sidebar-border: oklch(0.38 0.07 240);
   --sidebar-ring: var(--primary);
 }
 
@@ -104,6 +107,7 @@
   }
   h1, h2, h3 {
     font-family: var(--font-display);
+    font-weight: 700;
     letter-spacing: -0.02em;
   }
 }

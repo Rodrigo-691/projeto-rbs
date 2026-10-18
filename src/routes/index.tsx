@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText, ShieldCheck, BarChart3, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import brandIcon from "@/assets/planeta-atlantida-icon.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -29,7 +30,8 @@ function Index() {
       <section className="bg-ocean-gradient text-ocean-foreground relative overflow-hidden">
         <div className="bg-sunset absolute -right-24 -top-24 h-72 w-72 rounded-full opacity-90 blur-[2px]" />
         <div className="relative mx-auto max-w-5xl px-6 py-20 md:py-28">
-          <p className="text-sun text-sm font-semibold uppercase tracking-[0.2em]">Planeta Atlântida · 30 anos</p>
+          <img src={brandIcon.url} alt="Planeta Atlântida" className="bg-card shadow-soft h-16 w-16 rounded-2xl p-1.5" />
+          <p className="text-sun mt-5 text-base font-bold uppercase tracking-[0.2em]">Planeta Atlântida · 30 anos</p>
           <h1 className="mt-4 max-w-2xl text-4xl font-extrabold leading-tight md:text-6xl">Portal do Patrocinador</h1>
           <p className="mt-5 max-w-xl text-lg opacity-85">
             Acompanhe toda a sua parceria, do contrato ao pós-evento.

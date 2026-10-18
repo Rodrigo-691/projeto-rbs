@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import brandIcon from "@/assets/planeta-atlantida-icon.png.asset.json";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -66,7 +67,8 @@ function AuthPage() {
     <div className="bg-ocean-gradient flex min-h-screen items-center justify-center px-4">
       <form onSubmit={submit} className="bg-card shadow-soft w-full max-w-sm space-y-4 rounded-2xl p-7">
         <div>
-          <p className="text-primary text-xs font-semibold uppercase tracking-widest">Planeta Atlântida</p>
+          <img src={brandIcon.url} alt="" className="h-12 w-12 rounded-xl ring-border ring-1" />
+          <p className="text-primary mt-3 text-xs font-semibold uppercase tracking-widest">Planeta Atlântida</p>
           <h1 className="mt-1 text-2xl font-extrabold">
             {mode === "login" ? "Entrar" : mode === "signup" ? "Primeiro acesso" : "Esqueci a senha"}
           </h1>
