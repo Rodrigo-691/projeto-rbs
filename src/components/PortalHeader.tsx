@@ -20,7 +20,7 @@ export function PortalHeader() {
     <header className="bg-ocean-gradient text-ocean-foreground">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
         <Link to="/painel" className="flex items-center gap-3">
-          <img src={brandIcon.url} alt="" className="h-9 w-9 rounded-xl" />
+          <img src={brandIcon.url} alt="" className="bg-card h-9 w-9 rounded-xl p-1" />
           <span className="font-display text-base font-bold leading-tight">
             Portal do Patrocinador
             <span className="text-sun block text-[10px] font-semibold uppercase tracking-widest">Planeta Atlântida</span>
