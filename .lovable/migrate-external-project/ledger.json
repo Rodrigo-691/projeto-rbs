@@ -1,0 +1,10 @@
+[
+{"capability":"code","source":"archive","outcome":"migrate","status":"done","next_action":null},
+{"capability":"schema","source":"pg_dump baseline","outcome":"migrate","status":"done","next_action":null},
+{"capability":"records","source":"old database","outcome":"migrate","status":"pending","next_action":"user exports CSV/JSON of sponsors, members, files, media, survey tables"},
+{"capability":"auth identities","source":"old auth","outcome":"migrate","status":"pending","next_action":"user export of emails; users re-sign-up via invite list"},
+{"capability":"authorization","source":"RLS + admin_emails","outcome":"migrate","status":"done","next_action":null},
+{"capability":"quota tab rules","source":"quota_modules rows","outcome":"migrate","status":"defaulted","next_action":"confirm which tabs each quota sees"},
+{"capability":"file bytes","source":"sponsor-files bucket","outcome":"migrate","status":"pending","next_action":"re-upload existing files"},
+{"capability":"verification","source":"-","outcome":"verify","status":"partial","next_action":"signed-in flow after first sign-up"}
+]
