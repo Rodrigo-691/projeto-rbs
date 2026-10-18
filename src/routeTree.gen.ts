@@ -10,33 +10,211 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
+import { Route as AuthenticatedPatrocinadorIdRouteImport } from './routes/_authenticated/patrocinador.$id'
+import { Route as AuthenticatedPatrocinadorIdIndexRouteImport } from './routes/_authenticated/patrocinador.$id.index'
+import { Route as AuthenticatedPatrocinadorIdAplicacoesRouteImport } from './routes/_authenticated/patrocinador.$id.aplicacoes'
+import { Route as AuthenticatedPatrocinadorIdContratoRouteImport } from './routes/_authenticated/patrocinador.$id.contrato'
+import { Route as AuthenticatedPatrocinadorIdCortesiasRouteImport } from './routes/_authenticated/patrocinador.$id.cortesias'
+import { Route as AuthenticatedPatrocinadorIdCredenciamentoRouteImport } from './routes/_authenticated/patrocinador.$id.credenciamento'
+import { Route as AuthenticatedPatrocinadorIdHistoricoRouteImport } from './routes/_authenticated/patrocinador.$id.historico'
+import { Route as AuthenticatedPatrocinadorIdMidiaRouteImport } from './routes/_authenticated/patrocinador.$id.midia'
+import { Route as AuthenticatedPatrocinadorIdPesquisaRouteImport } from './routes/_authenticated/patrocinador.$id.pesquisa'
+import { Route as AuthenticatedPatrocinadorIdRelatorioRouteImport } from './routes/_authenticated/patrocinador.$id.relatorio'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedPainelRoute = AuthenticatedPainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPatrocinadorIdRoute =
+  AuthenticatedPatrocinadorIdRouteImport.update({
+    id: '/patrocinador/$id',
+    path: '/patrocinador/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdIndexRoute =
+  AuthenticatedPatrocinadorIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdAplicacoesRoute =
+  AuthenticatedPatrocinadorIdAplicacoesRouteImport.update({
+    id: '/aplicacoes',
+    path: '/aplicacoes',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdContratoRoute =
+  AuthenticatedPatrocinadorIdContratoRouteImport.update({
+    id: '/contrato',
+    path: '/contrato',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdCortesiasRoute =
+  AuthenticatedPatrocinadorIdCortesiasRouteImport.update({
+    id: '/cortesias',
+    path: '/cortesias',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdCredenciamentoRoute =
+  AuthenticatedPatrocinadorIdCredenciamentoRouteImport.update({
+    id: '/credenciamento',
+    path: '/credenciamento',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdHistoricoRoute =
+  AuthenticatedPatrocinadorIdHistoricoRouteImport.update({
+    id: '/historico',
+    path: '/historico',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdMidiaRoute =
+  AuthenticatedPatrocinadorIdMidiaRouteImport.update({
+    id: '/midia',
+    path: '/midia',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdPesquisaRoute =
+  AuthenticatedPatrocinadorIdPesquisaRouteImport.update({
+    id: '/pesquisa',
+    path: '/pesquisa',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdRelatorioRoute =
+  AuthenticatedPatrocinadorIdRelatorioRouteImport.update({
+    id: '/relatorio',
+    path: '/relatorio',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/painel': typeof AuthenticatedPainelRoute
+  '/patrocinador/$id': typeof AuthenticatedPatrocinadorIdRouteWithChildren
+  '/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
+  '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
+  '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
+  '/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
+  '/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
+  '/patrocinador/$id/pesquisa': typeof AuthenticatedPatrocinadorIdPesquisaRoute
+  '/patrocinador/$id/relatorio': typeof AuthenticatedPatrocinadorIdRelatorioRoute
+  '/patrocinador/$id/': typeof AuthenticatedPatrocinadorIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/painel': typeof AuthenticatedPainelRoute
+  '/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
+  '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
+  '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
+  '/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
+  '/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
+  '/patrocinador/$id/pesquisa': typeof AuthenticatedPatrocinadorIdPesquisaRoute
+  '/patrocinador/$id/relatorio': typeof AuthenticatedPatrocinadorIdRelatorioRoute
+  '/patrocinador/$id': typeof AuthenticatedPatrocinadorIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/painel': typeof AuthenticatedPainelRoute
+  '/_authenticated/patrocinador/$id': typeof AuthenticatedPatrocinadorIdRouteWithChildren
+  '/_authenticated/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
+  '/_authenticated/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
+  '/_authenticated/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
+  '/_authenticated/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/_authenticated/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
+  '/_authenticated/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
+  '/_authenticated/patrocinador/$id/pesquisa': typeof AuthenticatedPatrocinadorIdPesquisaRoute
+  '/_authenticated/patrocinador/$id/relatorio': typeof AuthenticatedPatrocinadorIdRelatorioRoute
+  '/_authenticated/patrocinador/$id/': typeof AuthenticatedPatrocinadorIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/painel'
+    | '/patrocinador/$id'
+    | '/patrocinador/$id/aplicacoes'
+    | '/patrocinador/$id/contrato'
+    | '/patrocinador/$id/cortesias'
+    | '/patrocinador/$id/credenciamento'
+    | '/patrocinador/$id/historico'
+    | '/patrocinador/$id/midia'
+    | '/patrocinador/$id/pesquisa'
+    | '/patrocinador/$id/relatorio'
+    | '/patrocinador/$id/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/reset-password'
+    | '/painel'
+    | '/patrocinador/$id/aplicacoes'
+    | '/patrocinador/$id/contrato'
+    | '/patrocinador/$id/cortesias'
+    | '/patrocinador/$id/credenciamento'
+    | '/patrocinador/$id/historico'
+    | '/patrocinador/$id/midia'
+    | '/patrocinador/$id/pesquisa'
+    | '/patrocinador/$id/relatorio'
+    | '/patrocinador/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/reset-password'
+    | '/_authenticated/painel'
+    | '/_authenticated/patrocinador/$id'
+    | '/_authenticated/patrocinador/$id/aplicacoes'
+    | '/_authenticated/patrocinador/$id/contrato'
+    | '/_authenticated/patrocinador/$id/cortesias'
+    | '/_authenticated/patrocinador/$id/credenciamento'
+    | '/_authenticated/patrocinador/$id/historico'
+    | '/_authenticated/patrocinador/$id/midia'
+    | '/_authenticated/patrocinador/$id/pesquisa'
+    | '/_authenticated/patrocinador/$id/relatorio'
+    | '/_authenticated/patrocinador/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +226,165 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/painel': {
+      id: '/_authenticated/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof AuthenticatedPainelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/patrocinador/$id': {
+      id: '/_authenticated/patrocinador/$id'
+      path: '/patrocinador/$id'
+      fullPath: '/patrocinador/$id'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/patrocinador/$id/': {
+      id: '/_authenticated/patrocinador/$id/'
+      path: '/'
+      fullPath: '/patrocinador/$id/'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdIndexRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/aplicacoes': {
+      id: '/_authenticated/patrocinador/$id/aplicacoes'
+      path: '/aplicacoes'
+      fullPath: '/patrocinador/$id/aplicacoes'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdAplicacoesRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/contrato': {
+      id: '/_authenticated/patrocinador/$id/contrato'
+      path: '/contrato'
+      fullPath: '/patrocinador/$id/contrato'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdContratoRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/cortesias': {
+      id: '/_authenticated/patrocinador/$id/cortesias'
+      path: '/cortesias'
+      fullPath: '/patrocinador/$id/cortesias'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdCortesiasRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/credenciamento': {
+      id: '/_authenticated/patrocinador/$id/credenciamento'
+      path: '/credenciamento'
+      fullPath: '/patrocinador/$id/credenciamento'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdCredenciamentoRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/historico': {
+      id: '/_authenticated/patrocinador/$id/historico'
+      path: '/historico'
+      fullPath: '/patrocinador/$id/historico'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdHistoricoRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/midia': {
+      id: '/_authenticated/patrocinador/$id/midia'
+      path: '/midia'
+      fullPath: '/patrocinador/$id/midia'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdMidiaRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/pesquisa': {
+      id: '/_authenticated/patrocinador/$id/pesquisa'
+      path: '/pesquisa'
+      fullPath: '/patrocinador/$id/pesquisa'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdPesquisaRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/relatorio': {
+      id: '/_authenticated/patrocinador/$id/relatorio'
+      path: '/relatorio'
+      fullPath: '/patrocinador/$id/relatorio'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdRelatorioRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
   }
 }
 
+interface AuthenticatedPatrocinadorIdRouteChildren {
+  AuthenticatedPatrocinadorIdAplicacoesRoute: typeof AuthenticatedPatrocinadorIdAplicacoesRoute
+  AuthenticatedPatrocinadorIdContratoRoute: typeof AuthenticatedPatrocinadorIdContratoRoute
+  AuthenticatedPatrocinadorIdCortesiasRoute: typeof AuthenticatedPatrocinadorIdCortesiasRoute
+  AuthenticatedPatrocinadorIdCredenciamentoRoute: typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  AuthenticatedPatrocinadorIdHistoricoRoute: typeof AuthenticatedPatrocinadorIdHistoricoRoute
+  AuthenticatedPatrocinadorIdMidiaRoute: typeof AuthenticatedPatrocinadorIdMidiaRoute
+  AuthenticatedPatrocinadorIdPesquisaRoute: typeof AuthenticatedPatrocinadorIdPesquisaRoute
+  AuthenticatedPatrocinadorIdRelatorioRoute: typeof AuthenticatedPatrocinadorIdRelatorioRoute
+  AuthenticatedPatrocinadorIdIndexRoute: typeof AuthenticatedPatrocinadorIdIndexRoute
+}
+
+const AuthenticatedPatrocinadorIdRouteChildren: AuthenticatedPatrocinadorIdRouteChildren =
+  {
+    AuthenticatedPatrocinadorIdAplicacoesRoute:
+      AuthenticatedPatrocinadorIdAplicacoesRoute,
+    AuthenticatedPatrocinadorIdContratoRoute:
+      AuthenticatedPatrocinadorIdContratoRoute,
+    AuthenticatedPatrocinadorIdCortesiasRoute:
+      AuthenticatedPatrocinadorIdCortesiasRoute,
+    AuthenticatedPatrocinadorIdCredenciamentoRoute:
+      AuthenticatedPatrocinadorIdCredenciamentoRoute,
+    AuthenticatedPatrocinadorIdHistoricoRoute:
+      AuthenticatedPatrocinadorIdHistoricoRoute,
+    AuthenticatedPatrocinadorIdMidiaRoute:
+      AuthenticatedPatrocinadorIdMidiaRoute,
+    AuthenticatedPatrocinadorIdPesquisaRoute:
+      AuthenticatedPatrocinadorIdPesquisaRoute,
+    AuthenticatedPatrocinadorIdRelatorioRoute:
+      AuthenticatedPatrocinadorIdRelatorioRoute,
+    AuthenticatedPatrocinadorIdIndexRoute:
+      AuthenticatedPatrocinadorIdIndexRoute,
+  }
+
+const AuthenticatedPatrocinadorIdRouteWithChildren =
+  AuthenticatedPatrocinadorIdRoute._addFileChildren(
+    AuthenticatedPatrocinadorIdRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
+  AuthenticatedPatrocinadorIdRoute: typeof AuthenticatedPatrocinadorIdRouteWithChildren
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedPainelRoute: AuthenticatedPainelRoute,
+  AuthenticatedPatrocinadorIdRoute:
+    AuthenticatedPatrocinadorIdRouteWithChildren,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
