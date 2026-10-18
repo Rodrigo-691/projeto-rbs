@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { FileText, ShieldCheck, BarChart3, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import brandIcon from "@/assets/planeta-atlantida-icon.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
