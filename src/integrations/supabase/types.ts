@@ -348,10 +348,6 @@ export type Database = {
         Returns: boolean
       }
       is_email_allowed: { Args: { _email: string }; Returns: boolean }
-      quota_allows: {
-        Args: { _sponsor_id: string; _tab_key: string }
-        Returns: boolean
-      }
     }
     Enums: {
       app_role: "admin_rbs"
