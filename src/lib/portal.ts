@@ -71,12 +71,23 @@ export const quotaModulesQuery = queryOptions({
   },
 });
 
+export type QuotaModule = Database["public"]["Tables"]["quota_modules"]["Row"];
+
+// The quota → tab map lives in the `quota_modules` table; this only reads it.
+export function isTabAllowed(
+  modules: readonly Pick<QuotaModule, "quota" | "tab_key">[],
+  quota: Quota,
+  tabKey: string,
+) {
+  return modules.some((m) => m.quota === quota && m.tab_key === tabKey);
+}
+
 export function useTabAccess(sponsor: Sponsor | null | undefined, tabKey: string) {
   const me = useMe();
   const mods = useQuery(quotaModulesQuery);
   if (me.data?.isAdmin) return true;
   if (!sponsor || !mods.data) return true;
-  return mods.data.some((m) => m.quota === sponsor.quota && m.tab_key === tabKey);
+  return isTabAllowed(mods.data, sponsor.quota, tabKey);
 }
 
 export function formatBytes(n: number) {
