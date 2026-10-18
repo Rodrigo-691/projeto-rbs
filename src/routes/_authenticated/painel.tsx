@@ -67,7 +67,7 @@ function Painel() {
         <Stat label="Subcota" value={counts("subcota")} />
       </div>
       <NewSponsor />
-      <SponsorList list={list} />
+      <FilteredList list={list} />
       <AdminEmails />
     </Shell>
   );
@@ -100,6 +100,37 @@ type Row = {
   sponsor_files: { count: number }[];
   media_items: { count: number }[];
 };
+
+function FilteredList({ list }: { list: Row[] }) {
+  const [text, setText] = useState("");
+  const [quota, setQuota] = useState<Quota | "all">("all");
+  const t = text.trim().toLowerCase();
+  const filtered = list.filter(
+    (s) => (quota === "all" || s.quota === quota) && (!t || s.name.toLowerCase().includes(t)),
+  );
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Input placeholder="Buscar patrocinador pelo nome" value={text} onChange={(e) => setText(e.target.value)} />
+        <select
+          value={quota}
+          onChange={(e) => setQuota(e.target.value as Quota | "all")}
+          className="border-input bg-background h-9 rounded-md border px-3 text-sm"
+        >
+          <option value="all">Todas as cotas</option>
+          {Object.entries(QUOTA_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>{v}</option>
+          ))}
+        </select>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="text-muted-foreground bg-card rounded-2xl border p-6 text-center text-sm">Nenhum patrocinador encontrado.</p>
+      ) : (
+        <SponsorList list={filtered} />
+      )}
+    </div>
+  );
+}
 
 function SponsorList({ list }: { list: Row[] }) {
   return (
