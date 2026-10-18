@@ -66,7 +66,8 @@ function AuthPage() {
     <div className="bg-ocean-gradient flex min-h-screen items-center justify-center px-4">
       <form onSubmit={submit} className="bg-card shadow-soft w-full max-w-sm space-y-4 rounded-2xl p-7">
         <div>
-          <p className="text-primary text-xs font-semibold uppercase tracking-widest">Planeta Atlântida</p>
+          <img src={brandIcon.url} alt="" className="h-12 w-12 rounded-xl" />
+          <p className="text-primary mt-3 text-xs font-semibold uppercase tracking-widest">Planeta Atlântida</p>
           <h1 className="mt-1 text-2xl font-extrabold">
             {mode === "login" ? "Entrar" : mode === "signup" ? "Primeiro acesso" : "Esqueci a senha"}
           </h1>

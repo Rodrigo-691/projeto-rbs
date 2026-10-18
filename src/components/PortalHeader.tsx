@@ -4,6 +4,7 @@ import { LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useMe } from "@/lib/portal";
+import brandIcon from "@/assets/planeta-atlantida-icon.png.asset.json";
 
 export function PortalHeader() {
   const me = useMe();
@@ -18,8 +19,8 @@ export function PortalHeader() {
   return (
     <header className="bg-ocean-gradient text-ocean-foreground">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
-        <Link to="/painel" className="flex items-center gap-2">
-          <span className="bg-sunset h-7 w-7 rounded-full" />
+        <Link to="/painel" className="flex items-center gap-3">
+          <img src={brandIcon.url} alt="" className="h-9 w-9 rounded-xl" />
           <span className="font-display text-base font-bold leading-tight">
             Portal do Patrocinador
             <span className="text-sun block text-[10px] font-semibold uppercase tracking-widest">Planeta Atlântida</span>
