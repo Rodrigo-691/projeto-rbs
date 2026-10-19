@@ -10,8 +10,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { formatDate, useMe } from "@/lib/portal";
+import { canDeleteMedia, splitMediaItems, type MediaItem } from "@/lib/media";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/midia")({
+  head: () => ({ meta: [
+    { title: "Mídia e conteúdo | Portal Planeta Atlântida" },
+    { name: "description", content: "Materiais enviados e publicações de mídia do patrocinador no Planeta Atlântida." },
+    { property: "og:title", content: "Mídia e conteúdo | Portal Planeta Atlântida" },
+    { property: "og:description", content: "Materiais enviados e publicações de mídia do patrocinador no Planeta Atlântida." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: Midia,
 });
 
@@ -52,9 +61,36 @@ function Midia() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-  async function remove(mid: string) {
-    await supabase.from("media_items").delete().eq("id", mid);
-    qc.invalidateQueries({ queryKey: ["media", id] });
+  const groups = splitMediaItems(items.data ?? []);
+  const remove = useMutation({
+    mutationFn: async (mid: string) => {
+      const { data, error } = await supabase.from("media_items").delete().eq("id", mid).eq("sponsor_id", id).select("id");
+      if (error) throw error;
+      if (!data?.length) throw new Error("Não foi possível excluir este conteúdo.");
+    },
+    onSuccess: () => {
+      toast.success("Conteúdo excluído");
+      qc.invalidateQueries({ queryKey: ["media", id] });
+      qc.invalidateQueries({ queryKey: ["audit", id] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  function mediaList(rows: MediaItem[], empty: string) {
+    return <ul className="divide-y">
+      {items.isPending && <li className="text-muted-foreground px-5 py-3 text-sm">Carregando...</li>}
+      {items.isError && <li className="text-destructive px-5 py-3 text-sm">Não foi possível carregar os conteúdos.</li>}
+      {items.isSuccess && rows.length === 0 && <li className="text-muted-foreground px-5 py-3 text-sm">{empty}</li>}
+      {rows.map((m) => <li key={m.id} className="flex gap-3 px-5 py-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-primary text-xs font-semibold uppercase">{KIND_LABEL[m.kind as Kind]}{m.channel ? ` · ${m.channel}` : ""}</p>
+          <p className="break-words font-medium">{m.title}</p>
+          {m.body && <p className="text-muted-foreground mt-1 whitespace-pre-wrap break-words text-sm">{m.body}</p>}
+          <p className="text-muted-foreground mt-1 break-words text-xs">{m.reach ? `${m.reach.toLocaleString("pt-BR")} pessoas · ` : ""}{m.created_by_email} · {formatDate(m.created_at)}</p>
+        </div>
+        {m.url && <a href={m.url} target="_blank" rel="noreferrer" aria-label="Abrir link" className="text-primary shrink-0"><ExternalLink className="h-4 w-4" /></a>}
+        {canDeleteMedia(m, me.data, id) && <Button size="icon" variant="ghost" className="shrink-0" disabled={remove.isPending} onClick={() => remove.mutate(m.id)} aria-label={`Excluir ${m.title}`} title="Excluir conteúdo"><Trash2 className="h-4 w-4" /></Button>}
+      </li>)}
+    </ul>;
   }
 
   return (
@@ -80,28 +116,19 @@ function Midia() {
         <Button type="submit" className="sm:col-span-2 sm:justify-self-end" disabled={add.isPending}>Salvar</Button>
       </form>
 
-      <FileSection sponsorId={id} tab="midia" category="material" title="Arquivos de material" description="Peças, vídeos e artes enviadas pela marca." uploader="all" />
+      <section className="space-y-4">
+        <h3 className="text-xl font-bold">Materiais enviados</h3>
+        <div className="rounded-lg border">
+          <div className="border-b px-5 py-3 font-semibold">Textos enviados</div>
+          {mediaList(groups.materials, "Nenhum texto enviado ainda.")}
+        </div>
+        <FileSection sponsorId={id} tab="midia" category="material" title="Arquivos enviados" description="Peças, vídeos e artes enviadas pela marca." uploader="all" />
+      </section>
       <FileSection sponsorId={id} tab="midia" category="relatorio_midia" title="Relatórios de mídia (RBS)" uploader="admin" />
 
       <div className="bg-card rounded-2xl border">
-        <div className="border-b px-5 py-3 font-semibold">Linha do tempo</div>
-        <ul className="divide-y">
-          {items.data?.length === 0 && <li className="text-muted-foreground px-5 py-3 text-sm">Nada registrado ainda.</li>}
-          {items.data?.map((m) => (
-            <li key={m.id} className="flex gap-3 px-5 py-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-primary text-xs font-semibold uppercase">{KIND_LABEL[m.kind as Kind]}{m.channel ? ` · ${m.channel}` : ""}</p>
-                <p className="font-medium">{m.title}</p>
-                {m.body && <p className="text-muted-foreground mt-1 whitespace-pre-wrap text-sm">{m.body}</p>}
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {m.reach ? `${m.reach.toLocaleString("pt-BR")} pessoas · ` : ""}{m.created_by_email} · {formatDate(m.created_at)}
-                </p>
-              </div>
-              {m.url && <a href={m.url} target="_blank" rel="noreferrer" className="text-primary"><ExternalLink className="h-4 w-4" /></a>}
-              {isAdmin && <button onClick={() => remove(m.id)} aria-label="Excluir"><Trash2 className="h-4 w-4" /></button>}
-            </li>
-          ))}
-        </ul>
+        <div className="border-b px-5 py-3 font-semibold">Linha do tempo RBS</div>
+        {mediaList(groups.publications, "Nenhuma publicação da RBS ainda.")}
       </div>
     </TabGate>
   );
