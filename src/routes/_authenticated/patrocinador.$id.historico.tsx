@@ -14,6 +14,7 @@ const TABLE: Record<string, string> = {
   media_items: "Mídia",
   survey_questions: "Perguntas da pesquisa",
   survey_results: "Resultado da pesquisa",
+  contract_signers: "Signatário",
 };
 const ACTION: Record<string, string> = { insert: "adicionou", update: "atualizou", delete: "removeu" };
 
