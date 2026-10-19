@@ -1,0 +1,2 @@
+ALTER POLICY "delete media" ON public.media_items TO authenticated USING (public.has_role(auth.uid(), 'admin_rbs'::public.app_role) OR (public.can_access_sponsor(sponsor_id) AND kind = 'material' AND created_by = auth.uid()));
+GRANT DELETE ON public.media_items TO authenticated;

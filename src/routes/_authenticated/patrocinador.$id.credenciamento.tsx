@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ExternalLink } from "lucide-react";
 import { TabGate, Placeholder } from "@/components/TabGate";
 import { Button } from "@/components/ui/button";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/credenciamento")({
+  head: () => portalHead("Credenciamento", "Credenciamento da equipe do patrocinador no Planeta Atlântida."),
   component: () => {
     const { id } = Route.useParams();
     return (

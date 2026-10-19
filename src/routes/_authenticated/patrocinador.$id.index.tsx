@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { QUOTA_LABEL, sponsorQuery, useMe, type Quota } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/")({
+  head: () => portalHead("Perfil do cliente", "Dados da marca, contatos e acessos do patrocinador do Planeta Atlântida."),
   component: Perfil,
 });
 
