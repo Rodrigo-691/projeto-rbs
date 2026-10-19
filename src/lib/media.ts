@@ -1,6 +1,14 @@
 import type { Tables } from "@/integrations/supabase/types";
 
 export type MediaItem = Tables<"media_items">;
+export type MaterialFile = Tables<"sponsor_files">;
+
+export function groupMaterialFiles(materials: readonly MediaItem[], files: readonly MaterialFile[]) {
+  return {
+    materials: materials.map((material) => ({ ...material, attachments: files.filter((file) => file.media_item_id === material.id) })),
+    standalone: files.filter((file) => !file.media_item_id),
+  };
+}
 
 export function splitMediaItems(items: readonly MediaItem[]) {
   return {

@@ -168,6 +168,7 @@ export type Database = {
           created_at: string
           file_name: string
           id: string
+          media_item_id: string | null
           mime_type: string | null
           size_bytes: number
           sponsor_id: string
@@ -181,6 +182,7 @@ export type Database = {
           created_at?: string
           file_name: string
           id?: string
+          media_item_id?: string | null
           mime_type?: string | null
           size_bytes?: number
           sponsor_id: string
@@ -194,6 +196,7 @@ export type Database = {
           created_at?: string
           file_name?: string
           id?: string
+          media_item_id?: string | null
           mime_type?: string | null
           size_bytes?: number
           sponsor_id?: string
@@ -203,6 +206,13 @@ export type Database = {
           uploaded_by_email?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "sponsor_files_media_item_sponsor_fkey"
+            columns: ["media_item_id", "sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "media_items"
+            referencedColumns: ["id", "sponsor_id"]
+          },
           {
             foreignKeyName: "sponsor_files_sponsor_id_fkey"
             columns: ["sponsor_id"]

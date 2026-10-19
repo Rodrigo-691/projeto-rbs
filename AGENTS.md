@@ -12,6 +12,7 @@
 # Project rules
 
 - Media presentation classifies submitted materials separately from publications using the shared media helpers; deletion affordances mirror database-enforced ownership rules without replacing RLS.
+- Material attachments use sponsor_files.media_item_id with a sponsor-matched foreign key; render linked files within their material and preserve unlinked legacy files in the same list.
 - Content routes define their own page metadata; the shared portalHead helper keeps sponsor-page social tags consistent.
 
 - The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`), not Lovable Cloud: run schema/data changes against that project, and never assume Lovable can mint a signed-in browser session for it — verify authenticated flows through the app's own sign-in.
