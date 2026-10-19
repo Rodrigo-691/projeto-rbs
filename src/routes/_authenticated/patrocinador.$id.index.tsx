@@ -33,12 +33,13 @@ function Perfil() {
 function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   const qc = useQueryClient();
   const s = useQuery(sponsorQuery(id));
-  const [form, setForm] = useState({ name: "", quota: "subcota" as Quota, segment: "", contact_name: "", contact_phone: "", notes: "" });
+  const [form, setForm] = useState({ name: "", quota: "subcota" as Quota, cnpj: "", segment: "", contact_name: "", contact_phone: "", notes: "" });
   useEffect(() => {
     if (s.data)
       setForm({
         name: s.data.name,
         quota: s.data.quota,
+        cnpj: s.data.cnpj ?? "",
         segment: s.data.segment ?? "",
         contact_name: s.data.contact_name ?? "",
         contact_phone: s.data.contact_phone ?? "",
@@ -75,6 +76,7 @@ function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
           {Object.entries(QUOTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
+      <div className="space-y-1"><Label>CNPJ</Label><Input {...f("cnpj")} placeholder="00.000.000/0000-00" /></div>
       <div className="space-y-1"><Label>Segmento</Label><Input {...f("segment")} /></div>
       <div className="space-y-1"><Label>Contato principal</Label><Input {...f("contact_name")} /></div>
       <div className="space-y-1"><Label>Telefone</Label><Input {...f("contact_phone")} /></div>
