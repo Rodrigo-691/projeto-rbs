@@ -56,6 +56,47 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_signers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_email: string | null
+          document: string | null
+          email: string | null
+          id: string
+          name: string
+          sponsor_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          sponsor_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
+          document?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          sponsor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signers_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "sponsors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       media_items: {
         Row: {
           body: string | null
@@ -202,6 +243,7 @@ export type Database = {
       }
       sponsors: {
         Row: {
+          cnpj: string | null
           contact_name: string | null
           contact_phone: string | null
           created_at: string
@@ -216,6 +258,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cnpj?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
@@ -230,6 +273,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cnpj?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
