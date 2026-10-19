@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Separar materiais enviados da linha do tempo RBS e permitir excluir conteúdos próprios com isolamento por patrocinador
+
 - [x] Login, perfis, isolamento, cadastro de patrocinadores
 - [x] Menu 7 abas, Perfil, Mídia, Pesquisa, upload/download, histórico
 - [x] Relatório com gráficos (PNG/PDF)
