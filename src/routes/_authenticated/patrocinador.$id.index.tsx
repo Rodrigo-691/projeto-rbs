@@ -69,15 +69,22 @@ function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
       <div className="space-y-1"><Label>Nome da marca</Label><Input {...f("name")} /></div>
       <div className="space-y-1">
         <Label>Cota</Label>
-        <select
-          disabled={!isAdmin}
-          value={form.quota}
-          onChange={(e) => setForm({ ...form, quota: e.target.value as Quota })}
-          className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-        >
-          {Object.entries(QUOTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        {isAdmin ? (
+          <select
+            value={form.quota}
+            onChange={(e) => setForm({ ...form, quota: e.target.value as Quota })}
+            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
+          >
+            {Object.entries(QUOTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        ) : (
+          <>
+            <Input value={QUOTA_LABEL[form.quota] ?? form.quota} disabled readOnly />
+            <p className="text-muted-foreground text-xs">Ajuste apenas pela equipe RBS.</p>
+          </>
+        )}
       </div>
+
       <div className="space-y-1"><Label>CNPJ</Label><Input {...f("cnpj")} placeholder="00.000.000/0000-00" /></div>
       <div className="space-y-1"><Label>Segmento</Label><Input {...f("segment")} /></div>
       <div className="space-y-1"><Label>Contato principal</Label><Input {...f("contact_name")} /></div>
