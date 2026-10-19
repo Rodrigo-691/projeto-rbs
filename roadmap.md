@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Reunir título, texto e anexo em um único envio e item de material, preservando materiais antigos
+
 - [x] Separar materiais enviados da linha do tempo RBS e permitir excluir conteúdos próprios com isolamento por patrocinador
 
 - [x] Login, perfis, isolamento, cadastro de patrocinadores
