@@ -78,11 +78,9 @@ function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
             {Object.entries(QUOTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         ) : (
-          <>
-            <Input value={QUOTA_LABEL[form.quota] ?? form.quota} disabled readOnly />
-            <p className="text-muted-foreground text-xs">Ajuste apenas pela equipe RBS.</p>
-          </>
+          <Input value={QUOTA_LABEL[form.quota] ?? form.quota} disabled readOnly />
         )}
+
       </div>
 
       <div className="space-y-1"><Label>CNPJ</Label><Input {...f("cnpj")} placeholder="00.000.000/0000-00" /></div>
