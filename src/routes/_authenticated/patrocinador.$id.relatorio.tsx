@@ -7,8 +7,10 @@ import { Download, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { sponsorQuery } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/relatorio")({
+  head: () => portalHead("Relatório da parceria", "Resultados de mídia e entregas da parceria com o Planeta Atlântida."),
   component: Relatorio,
 });
 

@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatDate } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/contrato")({
+  head: () => portalHead("Contrato", "Signatários e documentos contratuais do patrocinador do Planeta Atlântida."),
   component: Contrato,
 });
 

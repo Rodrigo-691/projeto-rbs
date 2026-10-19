@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TabGate, Placeholder } from "@/components/TabGate";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/cortesias")({
+  head: () => portalHead("Cortesias", "Cortesias do patrocinador por setor e dia do Planeta Atlântida."),
   component: () => {
     const { id } = Route.useParams();
     return (

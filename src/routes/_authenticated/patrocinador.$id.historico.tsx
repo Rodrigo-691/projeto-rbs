@@ -2,8 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/historico")({
+  head: () => portalHead("Histórico de atualizações", "Registro das ações realizadas no perfil do patrocinador do Planeta Atlântida."),
   component: Historico,
 });
 

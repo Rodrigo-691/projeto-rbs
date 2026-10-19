@@ -11,8 +11,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useMe } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/pesquisa")({
+  head: () => portalHead("Pesquisa da ativação", "Perguntas e resultados da pesquisa de ativação do patrocinador no Planeta Atlântida."),
   component: Pesquisa,
 });
 
