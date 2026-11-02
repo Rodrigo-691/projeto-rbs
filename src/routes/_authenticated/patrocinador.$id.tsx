@@ -1,19 +1,13 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, History, Lock } from "lucide-react";
+import { ArrowLeft, BarChart3, History } from "lucide-react";
 import { PortalHeader } from "@/components/PortalHeader";
 import { Badge } from "@/components/ui/badge";
-import { QUOTA_LABEL, TABS, quotaModulesQuery, sponsorQuery, useMe } from "@/lib/portal";
+import { QUOTA_LABEL, TABS, sponsorQuery, useMe, useSponsorTabAccess } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id")({
-  head: () => ({
-    meta: [
-      { title: "Minha parceria — Portal do Patrocinador" },
-      { name: "description", content: "Acompanhe a parceria com o Planeta Atlântida." },
-      { property: "og:title", content: "Minha parceria — Portal do Patrocinador" },
-      { property: "og:description", content: "Acompanhe a parceria com o Planeta Atlântida." },
-    ],
-  }),
+  head: () => portalHead("Minha parceria", "Acompanhe a parceria com o Planeta Atlântida."),
   component: SponsorLayout,
 });
 
@@ -21,7 +15,7 @@ function SponsorLayout() {
   const { id } = Route.useParams();
   const me = useMe();
   const sponsor = useQuery(sponsorQuery(id));
-  const mods = useQuery(quotaModulesQuery);
+  const access = useSponsorTabAccess(sponsor.data);
 
   if (sponsor.isLoading) return <><PortalHeader /><p className="text-muted-foreground p-8">Carregando...</p></>;
   if (!sponsor.data)
@@ -33,7 +27,6 @@ function SponsorLayout() {
     );
 
   const s = sponsor.data;
-  const allowed = (k: string) => mods.data?.some((m) => m.quota === s.quota && m.tab_key === k) ?? true;
   const linkCls =
     "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent";
   const activeCls = "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary";
@@ -53,7 +46,7 @@ function SponsorLayout() {
         </div>
         <div className="flex flex-col gap-6 md:flex-row">
           <nav className="bg-sidebar flex gap-1 overflow-x-auto rounded-2xl p-2 md:w-60 md:shrink-0 md:flex-col md:self-start">
-            {TABS.map((t, i) => (
+            {TABS.map((t, i) => access.allows(t.key) && (
               <Link
                 key={t.key}
                 to={t.to}
@@ -63,7 +56,6 @@ function SponsorLayout() {
                 activeProps={{ className: activeCls }}
               >
                 <span className="opacity-60">{i + 1}.</span> {t.label}
-                {!allowed(t.key) && <Lock className="ml-auto h-3 w-3 opacity-60" />}
               </Link>
             ))}
             <div className="bg-sidebar-border mx-2 my-1 hidden h-px md:block" />
