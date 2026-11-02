@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { isTabAllowed, TABS, type Quota, type QuotaModule } from "@/lib/portal";
+import { canAccessTab } from "@/lib/tab-access";
 
 // Mirrors the rows deployed in `quota_modules`: every level gets every tab
 // except "pesquisa", which is Master only.
@@ -15,6 +16,22 @@ const CONFIG: Pick<QuotaModule, "quota" | "tab_key">[] = (
 );
 
 describe("Tab access by sponsorship level", () => {
+  it("denies restricted content before identity and configuration are available", () => {
+    expect(canAccessTab(undefined, "subcota", { isAdmin: false }, "pesquisa")).toBe(false);
+    expect(canAccessTab(CONFIG, "master", undefined, "pesquisa")).toBe(false);
+    expect(canAccessTab(CONFIG, undefined, { isAdmin: false }, "pesquisa")).toBe(false);
+  });
+
+  it("grants RBS access regardless of the sponsor quota", () => {
+    expect(canAccessTab(CONFIG, "subcota", { isAdmin: true }, "pesquisa")).toBe(true);
+    expect(canAccessTab(CONFIG, "subcota_g", { isAdmin: true }, "pesquisa")).toBe(true);
+  });
+
+  it("uses the same permission for navigation and content for all quotas", () => {
+    expect(canAccessTab(CONFIG, "master", { isAdmin: false }, "pesquisa")).toBe(true);
+    expect(canAccessTab(CONFIG, "subcota", { isAdmin: false }, "pesquisa")).toBe(false);
+    expect(canAccessTab(CONFIG, "subcota_g", { isAdmin: false }, "pesquisa")).toBe(false);
+  });
   it("hides the activation survey from Subcota and Subcota G", () => {
     expect(isTabAllowed(CONFIG, "subcota", "pesquisa")).toBe(false);
     expect(isTabAllowed(CONFIG, "subcota_g", "pesquisa")).toBe(false);
