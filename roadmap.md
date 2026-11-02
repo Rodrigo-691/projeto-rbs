@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Abrir formulário completo para novo patrocinador e anexar plano comercial no cadastro — testes passaram; envio com conta real não verificado no Supabase externo
+
 - [x] Reunir título, texto e anexo em um único envio e item de material, preservando materiais antigos — testes passaram; conferência com conta conectada indisponível neste Supabase externo
 
 - [x] Separar materiais enviados da linha do tempo RBS e permitir excluir conteúdos próprios com isolamento por patrocinador
