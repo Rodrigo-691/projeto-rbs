@@ -46,7 +46,7 @@ describe("New sponsor registration", () => {
       sponsor_id: "sponsor-new", category: "plano_comercial", tab: "perfil", file_name: "plano.pdf",
     })));
     expect(api.sponsorInsert).toHaveBeenCalledWith({ name: "Marca Teste", quota: "master", cnpj: "12.345.678/0001-90", segment: "Alimentos", contact_name: "Maria", contact_phone: "51999999999", notes: "Plano anual" });
-    expect(api.upload.mock.calls[0][0]).toMatch(/^sponsor-new\/plano_comercial\//);
+    expect(api.upload.mock.calls[0]?.[0]).toMatch(/^sponsor-new\/plano_comercial\//);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
