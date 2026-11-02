@@ -2,23 +2,18 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PortalHeader } from "@/components/PortalHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { QUOTA_LABEL, useMe, type Quota } from "@/lib/portal";
+import { NewSponsor } from "@/components/NewSponsor";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/painel")({
-  head: () => ({
-    meta: [
-      { title: "Painel — Portal do Patrocinador" },
-      { name: "description", content: "Patrocinadores do Planeta Atlântida." },
-      { property: "og:title", content: "Painel — Portal do Patrocinador" },
-      { property: "og:description", content: "Patrocinadores do Planeta Atlântida." },
-    ],
-  }),
+  head: () => portalHead("Painel", "Patrocinadores do Planeta Atlântida."),
   component: Painel,
 });
 
@@ -154,47 +149,6 @@ function SponsorList({ list }: { list: Row[] }) {
         ))}
       </ul>
     </div>
-  );
-}
-
-function NewSponsor() {
-  const qc = useQueryClient();
-  const [name, setName] = useState("");
-  const [quota, setQuota] = useState<Quota>("subcota");
-  const m = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("sponsors").insert({ name, quota });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setName("");
-      toast.success("Patrocinador criado");
-      qc.invalidateQueries({ queryKey: ["sponsors"] });
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        m.mutate();
-      }}
-      className="bg-card flex flex-col gap-2 rounded-2xl border p-4 sm:flex-row"
-    >
-      <Input placeholder="Nome da marca" required value={name} onChange={(e) => setName(e.target.value)} />
-      <select
-        value={quota}
-        onChange={(e) => setQuota(e.target.value as Quota)}
-        className="border-input bg-background h-9 rounded-md border px-3 text-sm"
-      >
-        {Object.entries(QUOTA_LABEL).map(([k, v]) => (
-          <option key={k} value={k}>{v}</option>
-        ))}
-      </select>
-      <Button type="submit" disabled={m.isPending}>
-        <Plus className="h-4 w-4" /> Novo patrocinador
-      </Button>
-    </form>
   );
 }
 

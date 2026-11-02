@@ -11,6 +11,8 @@
 
 # Project rules
 
+- New sponsor registration uses a dedicated dialog with profile fields and the existing private commercial-plan file category; retain the created sponsor ID on upload failure so retrying never duplicates the sponsor.
+
 - Media presentation classifies submitted materials separately from publications using the shared media helpers; deletion affordances mirror database-enforced ownership rules without replacing RLS.
 - Material attachments use sponsor_files.media_item_id with a sponsor-matched foreign key; render linked files within their material and preserve unlinked legacy files in the same list.
 - Content routes define their own page metadata; the shared portalHead helper keeps sponsor-page social tags consistent.
