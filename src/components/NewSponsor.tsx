@@ -44,6 +44,7 @@ export function NewSponsor() {
         id = data.id;
         setCreatedId(id);
         await qc.invalidateQueries({ queryKey: ["sponsors"] });
+        await qc.invalidateQueries({ queryKey: ["audit", id] });
       }
       if (file) {
         const safeName = file.name.replace(/[^\w.\-]+/g, "_");
@@ -60,6 +61,7 @@ export function NewSponsor() {
           throw metadataError;
         }
         await qc.invalidateQueries({ queryKey: ["files", id, "plano_comercial"] });
+        await qc.invalidateQueries({ queryKey: ["audit", id] });
       }
     },
     onSuccess: () => {

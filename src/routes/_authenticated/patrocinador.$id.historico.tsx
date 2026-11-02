@@ -3,22 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDate } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
+import { auditDescription } from "@/lib/audit";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/historico")({
   head: () => portalHead("Histórico de atualizações", "Registro das ações realizadas no perfil do patrocinador do Planeta Atlântida."),
   component: Historico,
 });
-
-const TABLE: Record<string, string> = {
-  sponsors: "Perfil",
-  sponsor_members: "Acesso",
-  sponsor_files: "Arquivo",
-  media_items: "Mídia",
-  survey_questions: "Perguntas da pesquisa",
-  survey_results: "Resultado da pesquisa",
-  contract_signers: "Signatário",
-};
-const ACTION: Record<string, string> = { insert: "adicionou", update: "atualizou", delete: "removeu" };
 
 function Historico() {
   const { id } = Route.useParams();
@@ -38,9 +28,8 @@ function Historico() {
           {q.data?.length === 0 && <li className="text-muted-foreground px-5 py-3 text-sm">Sem atualizações.</li>}
           {q.data?.map((a) => (
             <li key={a.id} className="px-5 py-3 text-sm">
-              <span className="font-semibold">{a.actor_email ?? "Sistema"}</span> {ACTION[a.action] ?? a.action}{" "}
-              <span className="text-primary">{TABLE[a.table_name] ?? a.table_name}</span>
-              {a.summary ? `: ${a.summary}` : ""}
+              <span className="font-semibold">{a.actor_email ?? "Sistema"}</span>{" "}
+              <span className="text-primary">{auditDescription(a)}</span>
               <span className="text-muted-foreground block text-xs">{formatDate(a.created_at)}</span>
             </li>
           ))}

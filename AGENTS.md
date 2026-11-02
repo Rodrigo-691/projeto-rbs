@@ -21,6 +21,7 @@
 - Every sponsor data table carries `sponsor_id`, and RLS uses `can_access_sponsor()` — isolation lives in the database, not the UI.
 - Quota → visible tabs is configured in `quota_modules`; never hardcode quota checks in components. A tab whose data must stay restricted is also guarded in RLS through `quota_allows(sponsor_id, tab_key)`, so the rule holds in the database and not only in the menu.
 - Audit history is written by DB triggers (`log_change`) on every data table; add the trigger when adding a table.
+- Commercial-plan audit events include their category in the persisted summary so historical uploads remain identifiable even after the file is deleted; shared audit formatting distinguishes sponsor registration from profile updates.
 - Files live in the private `sponsor-files` bucket under `{sponsor_id}/...`, metadata in `sponsor_files`, downloads via short-lived signed URLs.
 - Sign-up is limited to `admin_emails` / `sponsor_members`; Admin RBS is granted only to emails listed in `admin_emails` (no first-user bootstrap).
 - Tab menu definitions live in `src/lib/portal.ts` (`TABS`) so the menu mirrors the commercial plan in one place.

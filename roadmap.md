@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Identificar cadastro e envio do plano comercial no histórico do patrocinador, mantendo os acessos existentes
+- [x] Identificar cadastro e envio do plano comercial no histórico do patrocinador, mantendo os acessos existentes — registros reais e teste transacional confirmados no banco; conferência visual autenticada indisponível no Supabase externo
 
 - [x] Abrir formulário completo para novo patrocinador e anexar plano comercial no cadastro — testes passaram; envio com conta real não verificado no Supabase externo
 
