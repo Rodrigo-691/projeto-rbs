@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Identificar cadastro e envio do plano comercial no histórico do patrocinador, mantendo os acessos existentes
+
 - [x] Abrir formulário completo para novo patrocinador e anexar plano comercial no cadastro — testes passaram; envio com conta real não verificado no Supabase externo
 
 - [x] Reunir título, texto e anexo em um único envio e item de material, preservando materiais antigos — testes passaram; conferência com conta conectada indisponível neste Supabase externo
