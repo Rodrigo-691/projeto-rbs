@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
+import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { TabGate } from "@/components/TabGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,51 +68,66 @@ function Contrato() {
 
   return (
     <TabGate id={id} tab="contrato" title="Contrato" intro="Cadastre quem assina o contrato. A RBS sobe o contrato final assinado para histórico.">
-      <div className="bg-card rounded-2xl border p-5">
-        <h3 className="font-bold">Signatários</h3>
+      <Panel
+        flush
+        title="Signatários"
+        description="Representantes legais ou procuradores responsáveis pela assinatura eletrônica."
+      >
         <form
-          className="mt-3 grid gap-3 sm:grid-cols-4"
+          className="grid gap-3 border-t px-5 py-4 sm:grid-cols-4"
           onSubmit={(e) => {
             e.preventDefault();
             if (v.name.trim()) add.mutate();
           }}
         >
-          <div className="space-y-1">
-            <Label>Nome</Label>
-            <Input required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
+          <div className="space-y-1.5">
+            <Label htmlFor="signer-name">Nome</Label>
+            <Input id="signer-name" required value={v.name} onChange={(e) => setV({ ...v, name: e.target.value })} />
           </div>
-          <div className="space-y-1">
-            <Label>E-mail</Label>
-            <Input type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
+          <div className="space-y-1.5">
+            <Label htmlFor="signer-email">E-mail</Label>
+            <Input id="signer-email" type="email" value={v.email} onChange={(e) => setV({ ...v, email: e.target.value })} />
           </div>
-          <div className="space-y-1">
-            <Label>CPF/CNPJ</Label>
-            <Input value={v.document} onChange={(e) => setV({ ...v, document: e.target.value })} />
+          <div className="space-y-1.5">
+            <Label htmlFor="signer-document">CPF/CNPJ</Label>
+            <Input id="signer-document" value={v.document} onChange={(e) => setV({ ...v, document: e.target.value })} />
           </div>
           <div className="flex items-end">
-            <Button type="submit" disabled={add.isPending}>
+            <Button type="submit" className="w-full sm:w-auto" disabled={add.isPending}>
               <UserPlus className="h-4 w-4" /> Adicionar
             </Button>
           </div>
         </form>
-        <ul className="mt-4 divide-y">
-          {signers.data?.length === 0 && <li className="text-muted-foreground py-2 text-sm">Nenhum signatário cadastrado.</li>}
-          {signers.data?.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2">
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{p.name}</p>
-                <p className="text-muted-foreground text-xs">
-                  {[p.email, p.document].filter(Boolean).join(" · ") || "Sem contato"} · adicionado por {p.created_by_email} em {formatDate(p.created_at)}
-                </p>
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => remove.mutate(p.id)} aria-label="Remover">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </div>
-      <FileSection sponsorId={id} tab="contrato" category="contrato_assinado" title="Contrato assinado" uploader="admin" />
+        {signers.isPending ? (
+          <PanelNote className="border-t">Carregando signatários...</PanelNote>
+        ) : (signers.data?.length ?? 0) === 0 ? (
+          <PanelNote className="border-t">Nenhum signatário cadastrado.</PanelNote>
+        ) : (
+          <PanelList>
+            {signers.data?.map((p) => (
+              <li key={p.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{p.name}</p>
+                  <p className="text-muted-foreground text-xs">
+                    {[p.email, p.document].filter(Boolean).join(" · ") || "Sem contato"} · adicionado por {p.created_by_email} em {formatDate(p.created_at)}
+                  </p>
+                </div>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="hover:text-destructive"
+                  onClick={() => remove.mutate(p.id)}
+                  aria-label="Remover"
+                  title="Remover signatário"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            ))}
+          </PanelList>
+        )}
+      </Panel>
+      <FileSection sponsorId={id} tab="contrato" category="contrato_assinado" title="Contrato assinado" description="Via final assinada pelas partes para consulta e auditoria." uploader="admin" />
     </TabGate>
   );
 }

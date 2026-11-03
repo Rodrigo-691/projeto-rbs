@@ -1,5 +1,11 @@
 # Roadmap
 
+- [x] Unificar controle das abas por cota e impedir Pesquisa para Subcota e Subcota G no menu e no acesso direto — testes passaram e proteção no banco confirmada; teste visual com conta patrocinadora indisponível no Supabase externo
+
+- [x] Identificar cadastro e envio do plano comercial no histórico do patrocinador, mantendo os acessos existentes — registros reais e teste transacional confirmados no banco; conferência visual autenticada indisponível no Supabase externo
+
+- [x] Abrir formulário completo para novo patrocinador e anexar plano comercial no cadastro — testes passaram; envio com conta real não verificado no Supabase externo
+
 - [x] Reunir título, texto e anexo em um único envio e item de material, preservando materiais antigos — testes passaram; conferência com conta conectada indisponível neste Supabase externo
 
 - [x] Separar materiais enviados da linha do tempo RBS e permitir excluir conteúdos próprios com isolamento por patrocinador

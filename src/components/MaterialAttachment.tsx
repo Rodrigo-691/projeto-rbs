@@ -11,9 +11,9 @@ export function MaterialAttachment({ file }: { file: MaterialFile }) {
     if (error || !data) { toast.error(error?.message ?? "Não foi possível baixar o anexo."); return; }
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
-  return <div className="mt-3 flex min-w-0 items-center gap-2 border-t pt-2">
-    <Paperclip className="text-primary h-4 w-4 shrink-0" />
+  return <div className="bg-muted/70 mt-2 flex min-w-0 items-center gap-2 rounded-md py-1 pl-3 pr-1">
+    <Paperclip className="text-brand-ink h-4 w-4 shrink-0" aria-hidden />
     <span className="min-w-0 flex-1 break-words text-sm">{file.file_name} <span className="text-muted-foreground">· {formatBytes(file.size_bytes)}</span></span>
-    <Button type="button" variant="ghost" size="icon" aria-label={`Baixar ${file.file_name}`} title="Baixar anexo" onClick={download}><Download className="h-4 w-4" /></Button>
+    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" aria-label={`Baixar ${file.file_name}`} title="Baixar anexo" onClick={download}><Download className="h-4 w-4" /></Button>
   </div>;
 }

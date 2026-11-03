@@ -30,3 +30,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+
+# Pastas de ferramentas e agentes locais
+.agent/
+.agents/
+.gemini/
+.impeccable/
+.opencode/
+.taste-skill/

@@ -2,13 +2,15 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
+import { Trash2, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
+import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { TabGate } from "@/components/TabGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { QUOTA_LABEL, sponsorQuery, useMe, type Quota } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
@@ -60,36 +62,71 @@ function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
     onError: (e: Error) => toast.error(e.message),
   });
   const f = (k: keyof typeof form) => ({
+    id: `profile-${k}`,
     value: form[k],
     disabled: !isAdmin,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm({ ...form, [k]: e.target.value }),
   });
   return (
-    <div className="bg-card grid gap-3 rounded-2xl border p-5 sm:grid-cols-2">
-      <div className="space-y-1"><Label>Nome da marca</Label><Input {...f("name")} /></div>
-      <div className="space-y-1">
-        <Label>Cota</Label>
-        {isAdmin ? (
-          <select
-            value={form.quota}
-            onChange={(e) => setForm({ ...form, quota: e.target.value as Quota })}
-            className="border-input bg-background h-9 w-full rounded-md border px-3 text-sm"
-          >
-            {Object.entries(QUOTA_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-          </select>
-        ) : (
-          <Input value={QUOTA_LABEL[form.quota] ?? form.quota} disabled readOnly />
+    <Panel title="Dados cadastrais" description="Informações da marca e ponto focal da parceria.">
+      <form
+        className="grid gap-4 sm:grid-cols-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isAdmin) save.mutate();
+        }}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-name">Nome da marca</Label>
+          <Input {...f("name")} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-quota">Cota</Label>
+          {isAdmin ? (
+            <NativeSelect
+              id="profile-quota"
+              value={form.quota}
+              onChange={(e) => setForm({ ...form, quota: e.target.value as Quota })}
+            >
+              {Object.entries(QUOTA_LABEL).map(([k, v]) => (
+                <option key={k} value={k}>
+                  {v}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : (
+            <Input id="profile-quota" value={QUOTA_LABEL[form.quota] ?? form.quota} disabled readOnly />
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-cnpj">CNPJ</Label>
+          <Input {...f("cnpj")} placeholder="00.000.000/0000-00" />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-segment">Segmento</Label>
+          <Input {...f("segment")} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-contact_name">Contato principal</Label>
+          <Input {...f("contact_name")} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-contact_phone">Telefone</Label>
+          <Input {...f("contact_phone")} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="profile-notes">Observações</Label>
+          <Textarea {...f("notes")} />
+        </div>
+        {isAdmin && (
+          <div className="flex justify-end sm:col-span-2">
+            <Button type="submit" disabled={save.isPending}>
+              {save.isPending ? "Salvando..." : "Salvar perfil"}
+            </Button>
+          </div>
         )}
-
-      </div>
-
-      <div className="space-y-1"><Label>CNPJ</Label><Input {...f("cnpj")} placeholder="00.000.000/0000-00" /></div>
-      <div className="space-y-1"><Label>Segmento</Label><Input {...f("segment")} /></div>
-      <div className="space-y-1"><Label>Contato principal</Label><Input {...f("contact_name")} /></div>
-      <div className="space-y-1"><Label>Telefone</Label><Input {...f("contact_phone")} /></div>
-      <div className="space-y-1 sm:col-span-2"><Label>Observações</Label><Textarea {...f("notes")} /></div>
-      {isAdmin && <Button className="sm:col-span-2 sm:justify-self-end" onClick={() => save.mutate()} disabled={save.isPending}>Salvar perfil</Button>}
-    </div>
+      </form>
+    </Panel>
   );
 }
 
@@ -117,23 +154,58 @@ function Members({ id, isAdmin }: { id: string; isAdmin: boolean }) {
     qc.invalidateQueries({ queryKey: ["members", id] });
   }
   return (
-    <div className="bg-card rounded-2xl border p-5">
-      <h3 className="font-bold">E-mails com acesso</h3>
+    <Panel
+      flush
+      title="E-mails com acesso"
+      description="Pessoas autorizadas pela RBS a acessar os dados desta marca no portal."
+    >
       {isAdmin && (
-        <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
-          <Input type="email" required placeholder="cliente@marca.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Button type="submit">Liberar acesso</Button>
+        <form
+          className="flex flex-col gap-2 border-t px-5 py-4 sm:flex-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add.mutate();
+          }}
+        >
+          <Input
+            type="email"
+            required
+            placeholder="cliente@marca.com.br"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="sm:max-w-sm"
+          />
+          <Button type="submit" disabled={add.isPending}>
+            <UserPlus className="h-4 w-4" /> Liberar acesso
+          </Button>
         </form>
       )}
-      <ul className="mt-3 flex flex-wrap gap-2">
-        {q.data?.length === 0 && <li className="text-muted-foreground text-sm">Nenhum e-mail liberado.</li>}
-        {q.data?.map((m) => (
-          <li key={m.id} className="bg-muted flex items-center gap-1 rounded-full px-3 py-1 text-sm">
-            {m.email}
-            {isAdmin && <button onClick={() => remove(m.id)} aria-label="Remover"><X className="h-3 w-3" /></button>}
-          </li>
-        ))}
-      </ul>
-    </div>
+      {q.isPending ? (
+        <PanelNote className="border-t">Carregando acessos...</PanelNote>
+      ) : (q.data?.length ?? 0) === 0 ? (
+        <PanelNote className="border-t">Nenhum e-mail liberado.</PanelNote>
+      ) : (
+        <PanelList>
+          {q.data?.map((m) => (
+            <li key={m.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
+              <span className="truncate font-medium">{m.email}</span>
+              {isAdmin && (
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="hover:text-destructive h-8 w-8"
+                  onClick={() => remove(m.id)}
+                  aria-label="Remover"
+                  title="Remover acesso"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </PanelList>
+      )}
+    </Panel>
   );
 }

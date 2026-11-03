@@ -1,84 +1,142 @@
 import { createFileRoute, Link, Outlet } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BarChart3, History, Lock } from "lucide-react";
-import { PortalHeader } from "@/components/PortalHeader";
-import { Badge } from "@/components/ui/badge";
-import { QUOTA_LABEL, TABS, quotaModulesQuery, sponsorQuery, useMe } from "@/lib/portal";
+import {
+  ArrowLeft,
+  BarChart3,
+  Building2,
+  ClipboardList,
+  FileText,
+  History,
+  IdCard,
+  Megaphone,
+  Palette,
+  Ticket,
+  type LucideIcon,
+} from "lucide-react";
+import { AppShell, NavGroup, navItemActiveClass, navItemClass } from "@/components/AppShell";
+import { Panel } from "@/components/Panel";
+import { Skeleton } from "@/components/ui/skeleton";
+import { QuotaTag } from "@/components/QuotaTag";
+import { TABS, sponsorQuery, useMe, useSponsorTabAccess } from "@/lib/portal";
+import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id")({
-  head: () => ({
-    meta: [
-      { title: "Minha parceria — Portal do Patrocinador" },
-      { name: "description", content: "Acompanhe a parceria com o Planeta Atlântida." },
-      { property: "og:title", content: "Minha parceria — Portal do Patrocinador" },
-      { property: "og:description", content: "Acompanhe a parceria com o Planeta Atlântida." },
-    ],
-  }),
+  head: () => portalHead("Minha parceria", "Acompanhe a parceria com o Planeta Atlântida."),
   component: SponsorLayout,
 });
+
+/** Presentation only: the menu itself (order, labels, routes) stays in TABS. */
+const TAB_ICON: Record<(typeof TABS)[number]["key"], LucideIcon> = {
+  perfil: Building2,
+  aplicacoes: Palette,
+  midia: Megaphone,
+  cortesias: Ticket,
+  credenciamento: IdCard,
+  pesquisa: ClipboardList,
+  contrato: FileText,
+};
 
 function SponsorLayout() {
   const { id } = Route.useParams();
   const me = useMe();
   const sponsor = useQuery(sponsorQuery(id));
-  const mods = useQuery(quotaModulesQuery);
+  const access = useSponsorTabAccess(sponsor.data);
+  const isAdmin = !!me.data?.isAdmin;
 
-  if (sponsor.isLoading) return <><PortalHeader /><p className="text-muted-foreground p-8">Carregando...</p></>;
+  if (sponsor.isLoading)
+    return (
+      <AppShell
+        nav={
+          <div className="space-y-2 px-3 pt-2" aria-hidden>
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="bg-sidebar-accent h-5" />
+            ))}
+          </div>
+        }
+      >
+        <div className="space-y-4" role="status" aria-label="Carregando">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-48 w-full" />
+        </div>
+      </AppShell>
+    );
+
   if (!sponsor.data)
     return (
-      <>
-        <PortalHeader />
-        <p className="p-8">Patrocinador não encontrado ou sem acesso.</p>
-      </>
+      <AppShell nav={isAdmin ? <BackToList /> : null}>
+        <Panel title="Patrocinador não encontrado ou sem acesso">
+          <p className="text-muted-foreground text-sm">
+            Confira o link ou peça ao time B2B da RBS para liberar o seu e-mail nesta marca.
+          </p>
+        </Panel>
+      </AppShell>
     );
 
   const s = sponsor.data;
-  const allowed = (k: string) => mods.data?.some((m) => m.quota === s.quota && m.tab_key === k) ?? true;
-  const linkCls =
-    "flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/80 hover:bg-sidebar-accent";
-  const activeCls = "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary";
 
-  return (
-    <div className="min-h-screen">
-      <PortalHeader />
-      <div className="mx-auto max-w-6xl px-4 py-6">
-        {me.data?.isAdmin && (
-          <Link to="/painel" className="text-muted-foreground mb-3 inline-flex items-center gap-1 text-sm">
-            <ArrowLeft className="h-4 w-4" /> Todos os patrocinadores
-          </Link>
-        )}
-        <div className="mb-5 flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-extrabold">{s.name}</h1>
-          <Badge>{QUOTA_LABEL[s.quota]}</Badge>
-        </div>
-        <div className="flex flex-col gap-6 md:flex-row">
-          <nav className="bg-sidebar flex gap-1 overflow-x-auto rounded-2xl p-2 md:w-60 md:shrink-0 md:flex-col md:self-start">
-            {TABS.map((t, i) => (
-              <Link
-                key={t.key}
-                to={t.to}
-                params={{ id }}
-                activeOptions={{ exact: true }}
-                className={linkCls}
-                activeProps={{ className: activeCls }}
-              >
-                <span className="opacity-60">{i + 1}.</span> {t.label}
-                {!allowed(t.key) && <Lock className="ml-auto h-3 w-3 opacity-60" />}
-              </Link>
-            ))}
-            <div className="bg-sidebar-border mx-2 my-1 hidden h-px md:block" />
-            <Link to="/patrocinador/$id/relatorio" params={{ id }} className={linkCls} activeProps={{ className: activeCls }}>
-              <BarChart3 className="h-4 w-4" /> Relatório
-            </Link>
-            <Link to="/patrocinador/$id/historico" params={{ id }} className={linkCls} activeProps={{ className: activeCls }}>
-              <History className="h-4 w-4" /> Histórico
-            </Link>
-          </nav>
-          <section className="min-w-0 flex-1 space-y-4">
-            <Outlet />
-          </section>
+  const nav = (
+    <>
+      {isAdmin && <BackToList />}
+      <div className="px-3 pb-1 pt-1">
+        <p className="line-clamp-2 text-[15px] font-semibold leading-snug" title={s.name}>
+          {s.name}
+        </p>
+        <div className="mt-2">
+          <QuotaTag quota={s.quota} onDark />
         </div>
       </div>
-    </div>
+      <NavGroup label="Parceria">
+        {TABS.map((t) => {
+          if (!access.allows(t.key)) return null;
+          const Icon = TAB_ICON[t.key];
+          return (
+            <Link
+              key={t.key}
+              to={t.to}
+              params={{ id }}
+              activeOptions={{ exact: true }}
+              className={navItemClass}
+              activeProps={{ className: navItemActiveClass }}
+            >
+              <Icon aria-hidden /> <span className="truncate">{t.label}</span>
+            </Link>
+          );
+        })}
+      </NavGroup>
+      <NavGroup label="Resultados">
+        <Link to="/patrocinador/$id/relatorio" params={{ id }} className={navItemClass} activeProps={{ className: navItemActiveClass }}>
+          <BarChart3 aria-hidden /> Relatório
+        </Link>
+        <Link to="/patrocinador/$id/historico" params={{ id }} className={navItemClass} activeProps={{ className: navItemActiveClass }}>
+          <History aria-hidden /> Histórico
+        </Link>
+      </NavGroup>
+    </>
+  );
+
+  return (
+    <AppShell nav={nav} mobileTitle={s.name}>
+      {isAdmin && (
+        <nav aria-label="Trilha" className="text-muted-foreground mb-5 flex min-w-0 items-center gap-1.5 text-sm">
+          <Link to="/painel" className="hover:text-foreground shrink-0 transition-colors">
+            Patrocinadores
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="text-foreground truncate font-medium">{s.name}</span>
+        </nav>
+      )}
+      <div className="space-y-5">
+        <Outlet />
+      </div>
+    </AppShell>
+  );
+}
+
+function BackToList() {
+  return (
+    <Link to="/painel" className={navItemClass}>
+      <ArrowLeft aria-hidden /> Todos os patrocinadores
+    </Link>
   );
 }

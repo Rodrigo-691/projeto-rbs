@@ -4,15 +4,20 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Planeta Atlântida official identity: cyan #03A1D0, pink #FF3E9A, dark #212529,
-   earth #674522, highlight yellow #FFF48A. Montserrat for display, Jakarta for body. */
+/* Planeta Atlântida identity mapped onto an operational B2B system:
+   graphite #212529 carries structure, electric cyan #03A1D0 marks
+   focus and current selection, deeper cyan carries primary actions,
+   magenta #FF3E9A is a rare highlight, solar yellow #FFF48A and earth #674522 are
+   reserved for charts and alerts.
+   Default theme is DARK.
+*/
 
 @theme inline {
-  --font-display: "Montserrat", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
+  --font-display: "Bricolage Grotesque", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
   --color-background: var(--background);
@@ -31,11 +36,17 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ocean: var(--ocean);
-  --color-ocean-foreground: var(--ocean-foreground);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-highlight: var(--highlight);
+  --color-highlight-ink: var(--highlight-ink);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-graphite: var(--graphite);
   --color-sun: var(--sun);
   --color-earth: var(--earth);
   --color-chart-1: var(--chart-1);
@@ -45,6 +56,7 @@
   --color-chart-5: var(--chart-5);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
@@ -53,71 +65,163 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Light theme tokens */
 :root {
-  --radius: 0.9rem;
-  --background: oklch(0.985 0.006 245);
-  --foreground: oklch(0.262 0.0095 248.19);
-  --card: oklch(0.998 0.002 245);
-  --card-foreground: oklch(0.262 0.0095 248.19);
-  --popover: oklch(0.998 0.002 245);
-  --popover-foreground: oklch(0.262 0.0095 248.19);
+  --radius: 0.5rem;
+
+  --graphite: oklch(0.25 0.008 250);
+  --background: oklch(0.982 0.003 250);
+  --foreground: var(--graphite);
+  --card: oklch(1 0 0);
+  --card-foreground: var(--graphite);
+  --popover: oklch(1 0 0);
+  --popover-foreground: var(--graphite);
+  --secondary: oklch(0.955 0.004 250);
+  --secondary-foreground: var(--graphite);
+  --muted: oklch(0.962 0.004 250);
+  --muted-foreground: oklch(0.47 0.012 250);
+  --accent: oklch(0.952 0.005 245);
+  --accent-foreground: var(--graphite);
+  --border: oklch(0.915 0.005 250);
+  --input: oklch(0.88 0.006 250);
+
+  /* Festival colours */
+  --brand: oklch(0.662 0.1284 227.8); /* #03A1D0 */
+  --brand-ink: oklch(0.52 0.105 232); /* text-safe cyan */
+  --brand-soft: oklch(0.95 0.03 225);
+  --highlight: oklch(0.678 0.2371 356.87); /* #FF3E9A */
+  --highlight-ink: oklch(0.54 0.2 358);
+  --highlight-soft: oklch(0.955 0.03 356);
+  --sun: oklch(0.954 0.1282 103.29); /* #FFF48A */
+  --earth: oklch(0.421 0.0683 64.83); /* #674522 */
+
+  /* Roles */
+  --primary: oklch(0.54 0.11 232); /* #007BA3, white text passes AA */
+  --primary-foreground: oklch(0.995 0 0);
+  --destructive: oklch(0.55 0.2 27);
+  --destructive-foreground: oklch(0.995 0 0);
+  --success: oklch(0.55 0.12 160);
+  --ring: var(--brand);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--highlight);
+  --chart-3: oklch(0.36 0.01 250);
+  --chart-4: oklch(0.55 0.08 65);
+  --chart-5: oklch(0.83 0.14 98);
+
+  /* Sidebar */
+  --sidebar: oklch(0.225 0.008 250);
+  --sidebar-foreground: oklch(0.95 0.003 250);
+  --sidebar-muted: oklch(0.74 0.01 250);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.2 0.01 250);
+  --sidebar-accent: oklch(0.285 0.009 250);
+  --sidebar-accent-foreground: oklch(0.98 0.002 250);
+  --sidebar-border: oklch(0.31 0.009 250);
+  --sidebar-ring: var(--brand);
+}
+
+/* Dark theme tokens (Default for .dark class and initial experience) */
+.dark {
+  --graphite: oklch(0.93 0.006 250);
+  --background: oklch(0.18 0.008 250);
+  --foreground: oklch(0.94 0.004 250);
+  --card: oklch(0.22 0.008 250);
+  --card-foreground: oklch(0.94 0.004 250);
+  --popover: oklch(0.22 0.008 250);
+  --popover-foreground: oklch(0.94 0.004 250);
+  --secondary: oklch(0.26 0.008 250);
+  --secondary-foreground: oklch(0.92 0.004 250);
+  --muted: oklch(0.25 0.008 250);
+  --muted-foreground: oklch(0.68 0.01 250);
+  --accent: oklch(0.28 0.008 250);
+  --accent-foreground: oklch(0.96 0.004 250);
+  --border: oklch(0.29 0.008 250);
+  --input: oklch(0.32 0.008 250);
+
+  /* Festival colours tuned for dark contrast */
+  --brand: oklch(0.70 0.13 227.8);
+  --brand-ink: oklch(0.74 0.12 227.8);
+  --brand-soft: oklch(0.26 0.04 227.8);
+  --highlight: oklch(0.70 0.23 356.87);
+  --highlight-ink: oklch(0.75 0.21 356.87);
+  --highlight-soft: oklch(0.28 0.05 356.87);
+  --sun: oklch(0.92 0.12 103.29);
+  --earth: oklch(0.60 0.07 64.83);
+
   --primary: oklch(0.662 0.1284 227.8);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.95 0.02 227);
-  --secondary-foreground: oklch(0.262 0.0095 248.19);
-  --muted: oklch(0.955 0.012 240);
-  --muted-foreground: oklch(0.52 0.03 248);
-  --accent: oklch(0.678 0.2371 356.87);
-  --accent-foreground: oklch(0.99 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0.012 240);
-  --input: oklch(0.9 0.012 240);
-  --ring: oklch(0.662 0.1284 227.8);
-  --ocean: oklch(0.29 0.05 248);
-  --ocean-foreground: oklch(0.98 0.006 245);
-  --sun: oklch(0.954 0.1282 103.29);
-  --earth: oklch(0.421 0.0683 64.83);
-  --chart-1: oklch(0.662 0.1284 227.8);
-  --chart-2: oklch(0.678 0.2371 356.87);
-  --chart-3: oklch(0.421 0.0683 64.83);
-  --chart-4: oklch(0.78 0.1 205);
-  --chart-5: oklch(0.85 0.14 100);
-  --gradient-sunset: linear-gradient(135deg, var(--primary), var(--accent));
-  --gradient-ocean: linear-gradient(160deg, var(--ocean), oklch(0.42 0.11 232));
-  --shadow-soft: 0 10px 30px -12px color-mix(in oklab, var(--ocean) 25%, transparent);
-  --sidebar: var(--ocean);
-  --sidebar-foreground: var(--ocean-foreground);
-  --sidebar-primary: var(--primary);
-  --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.38 0.07 240);
-  --sidebar-accent-foreground: var(--ocean-foreground);
-  --sidebar-border: oklch(0.38 0.07 240);
-  --sidebar-ring: var(--primary);
+  --primary-foreground: oklch(0.18 0.008 250);
+  --destructive: oklch(0.65 0.20 27);
+  --destructive-foreground: oklch(0.995 0 0);
+  --success: oklch(0.65 0.14 160);
+  --ring: var(--brand);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--highlight);
+  --chart-3: oklch(0.65 0.01 250);
+  --chart-4: oklch(0.70 0.09 65);
+  --chart-5: oklch(0.85 0.13 98);
+
+  --sidebar: oklch(0.15 0.008 250);
+  --sidebar-foreground: oklch(0.95 0.003 250);
+  --sidebar-muted: oklch(0.65 0.01 250);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: oklch(0.18 0.008 250);
+  --sidebar-accent: oklch(0.22 0.008 250);
+  --sidebar-accent-foreground: oklch(0.98 0.002 250);
+  --sidebar-border: oklch(0.25 0.008 250);
+  --sidebar-ring: var(--brand);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
   }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    scrollbar-color: oklch(0.5 0.006 250) transparent;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
   }
-  h1, h2, h3 {
-    font-family: var(--font-display);
-    font-weight: 700;
-    letter-spacing: -0.02em;
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brand) 28%, transparent);
+    color: var(--foreground);
+  }
+  input,
+  textarea {
+    caret-color: var(--brand-ink);
+  }
+  a {
+    text-underline-offset: 3px;
+  }
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  :focus-visible {
+    outline-color: var(--brand);
   }
 }
 
-@utility bg-sunset {
-  background-image: var(--gradient-sunset);
-}
-@utility bg-ocean-gradient {
-  background-image: var(--gradient-ocean);
-}
-@utility shadow-soft {
-  box-shadow: var(--shadow-soft);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

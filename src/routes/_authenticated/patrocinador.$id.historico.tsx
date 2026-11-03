@@ -1,24 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader, Panel, PanelList, PanelNote } from "@/components/Panel";
 import { formatDate } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
+import { auditDescription } from "@/lib/audit";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/historico")({
   head: () => portalHead("Histórico de atualizações", "Registro das ações realizadas no perfil do patrocinador do Planeta Atlântida."),
   component: Historico,
 });
-
-const TABLE: Record<string, string> = {
-  sponsors: "Perfil",
-  sponsor_members: "Acesso",
-  sponsor_files: "Arquivo",
-  media_items: "Mídia",
-  survey_questions: "Perguntas da pesquisa",
-  survey_results: "Resultado da pesquisa",
-  contract_signers: "Signatário",
-};
-const ACTION: Record<string, string> = { insert: "adicionou", update: "atualizou", delete: "removeu" };
 
 function Historico() {
   const { id } = Route.useParams();
@@ -32,20 +23,29 @@ function Historico() {
   });
   return (
     <>
-      <h2 className="text-2xl font-extrabold">Histórico de atualizações</h2>
-      <div className="bg-card rounded-2xl border">
-        <ul className="divide-y">
-          {q.data?.length === 0 && <li className="text-muted-foreground px-5 py-3 text-sm">Sem atualizações.</li>}
-          {q.data?.map((a) => (
-            <li key={a.id} className="px-5 py-3 text-sm">
-              <span className="font-semibold">{a.actor_email ?? "Sistema"}</span> {ACTION[a.action] ?? a.action}{" "}
-              <span className="text-primary">{TABLE[a.table_name] ?? a.table_name}</span>
-              {a.summary ? `: ${a.summary}` : ""}
-              <span className="text-muted-foreground block text-xs">{formatDate(a.created_at)}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <PageHeader
+        title="Histórico de atualizações"
+        description="Registro automático de todas as alterações, envios de materiais e uploads desta parceria."
+      />
+      <Panel flush>
+        {q.isPending ? (
+          <PanelNote>Carregando histórico...</PanelNote>
+        ) : (q.data?.length ?? 0) === 0 ? (
+          <PanelNote>Sem atualizações.</PanelNote>
+        ) : (
+          <PanelList className="border-t-0">
+            {q.data?.map((a) => (
+              <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3 text-sm">
+                <p className="min-w-0">
+                  <span className="font-semibold">{a.actor_email ?? "Sistema"}</span>{" "}
+                  <span className="text-brand-ink">{auditDescription(a)}</span>
+                </p>
+                <span className="tabular text-muted-foreground shrink-0 text-xs">{formatDate(a.created_at)}</span>
+              </li>
+            ))}
+          </PanelList>
+        )}
+      </Panel>
     </>
   );
 }

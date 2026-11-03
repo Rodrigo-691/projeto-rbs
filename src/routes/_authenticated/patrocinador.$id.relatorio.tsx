@@ -5,6 +5,7 @@ import { toPng } from "html-to-image";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
 import { Download, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageHeader, Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { sponsorQuery } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
@@ -58,29 +59,32 @@ function Relatorio() {
 
   return (
     <>
-      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <div>
-          <h2 className="text-2xl font-extrabold">Relatório da parceria</h2>
-          <p className="text-muted-foreground text-sm">Gráficos gerados automaticamente. Baixe cada um em imagem para a apresentação.</p>
-        </div>
-        <Button variant="secondary" onClick={() => window.print()}>
-          <Printer className="h-4 w-4" /> Salvar em PDF
-        </Button>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <PageHeader
+        title="Relatório da parceria"
+        description="Gráficos gerados automaticamente. Baixe cada um em imagem para a apresentação."
+        className="print:hidden"
+        actions={
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Salvar em PDF
+          </Button>
+        }
+      />
+      <div className="bg-card grid divide-y rounded-lg border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <Kpi label="Alcance total de mídia" value={totalReach.toLocaleString("pt-BR")} />
         <Kpi label="Itens de mídia" value={String(d?.media.length ?? 0)} />
         <Kpi label="Arquivos no portal" value={String(d?.files.length ?? 0)} />
       </div>
       <ChartCard title={`Alcance por canal — ${sponsor.data?.name ?? ""}`}>
-        {byChannel.length === 0 ? <Empty /> : (
+        {byChannel.length === 0 ? (
+          <Empty />
+        ) : (
           <ResponsiveContainer width="100%" height={260}>
             <BarChart data={byChannel}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="canal" fontSize={12} />
               <YAxis fontSize={12} tickFormatter={(v) => `${Math.round(v / 1000)}k`} />
               <Tooltip formatter={(v: number) => v.toLocaleString("pt-BR")} />
-              <Bar dataKey="alcance" fill="var(--chart-1)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="alcance" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -91,12 +95,14 @@ function Relatorio() {
             <XAxis type="number" allowDecimals={false} fontSize={12} />
             <YAxis type="category" dataKey="name" width={130} fontSize={12} />
             <Tooltip />
-            <Bar dataKey="value" fill="var(--chart-2)" radius={[0, 6, 6, 0]} />
+            <Bar dataKey="value" fill="var(--chart-2)" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </ChartCard>
       {questions.length === 0 ? (
-        <ChartCard title="Pesquisa da ativação"><Empty /></ChartCard>
+        <ChartCard title="Pesquisa da ativação">
+          <Empty />
+        </ChartCard>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
           {questions.map(([q, rows]) => (
@@ -104,7 +110,9 @@ function Relatorio() {
               <ResponsiveContainer width="100%" height={240}>
                 <PieChart>
                   <Pie data={rows} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} label={(e) => `${e.value}%`}>
-                    {rows.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    {rows.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                    ))}
                   </Pie>
                   <Legend />
                   <Tooltip formatter={(v: number) => `${v}%`} />
@@ -120,9 +128,9 @@ function Relatorio() {
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card shadow-soft rounded-2xl border p-4">
-      <p className="text-muted-foreground text-xs uppercase tracking-wide">{label}</p>
-      <p className="font-display mt-1 text-2xl font-extrabold">{value}</p>
+    <div className="px-5 py-4">
+      <p className="text-muted-foreground text-xs font-medium">{label}</p>
+      <p className="tabular mt-1 text-2xl font-semibold tracking-tight">{value}</p>
     </div>
   );
 }
@@ -142,14 +150,18 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
     a.click();
   }
   return (
-    <div className="bg-card rounded-2xl border p-5">
+    <Panel
+      title={title}
+      actions={
+        <Button size="sm" variant="ghost" className="print:hidden" onClick={save}>
+          <Download className="h-4 w-4" /> Baixar PNG
+        </Button>
+      }
+    >
       <div ref={ref} className="bg-card">
-        <h3 className="mb-3 font-bold">{title}</h3>
+        <p className="sr-only">{title}</p>
         {children}
       </div>
-      <div className="mt-2 flex justify-end print:hidden">
-        <Button size="sm" variant="ghost" onClick={save}><Download className="h-4 w-4" /> Baixar PNG</Button>
-      </div>
-    </div>
+    </Panel>
   );
 }

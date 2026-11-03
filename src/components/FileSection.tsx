@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Download, Trash2, Upload, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { ALLOWED_TYPES, BUCKET, MAX_FILE_MB, formatBytes, formatDate, useMe } from "@/lib/portal";
 
 type Props = {
@@ -85,13 +86,12 @@ export function FileSection({ sponsorId, tab, category, title, description, uplo
   }
 
   return (
-    <div className="bg-card rounded-2xl border p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="font-bold">{title}</h3>
-          {description && <p className="text-muted-foreground text-sm">{description}</p>}
-        </div>
-        {canUpload && (
+    <Panel
+      flush
+      title={title}
+      description={description}
+      actions={
+        canUpload && (
           <>
             <input
               ref={input}
@@ -104,34 +104,52 @@ export function FileSection({ sponsorId, tab, category, title, description, uplo
                 e.target.value = "";
               }}
             />
-            <Button size="sm" onClick={() => input.current?.click()} disabled={upload.isPending}>
+            <Button size="sm" variant="outline" onClick={() => input.current?.click()} disabled={upload.isPending}>
               <Upload className="h-4 w-4" /> {upload.isPending ? "Enviando..." : "Enviar arquivo"}
             </Button>
           </>
-        )}
-      </div>
-      <ul className="mt-3 divide-y">
-        {files.data?.length === 0 && <li className="text-muted-foreground py-2 text-sm">Nenhum arquivo ainda.</li>}
-        {files.data?.map((f) => (
-          <li key={f.id} className="flex items-center gap-3 py-2">
-            <FileText className="text-primary h-4 w-4 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{f.file_name}</p>
-              <p className="text-muted-foreground text-xs">
-                {formatBytes(f.size_bytes)} · {f.uploaded_by_email} · {formatDate(f.created_at)}
-              </p>
-            </div>
-            <Button size="icon" variant="ghost" onClick={() => download(f.storage_path)} aria-label="Baixar">
-              <Download className="h-4 w-4" />
-            </Button>
-            {(me.data?.isAdmin || f.uploaded_by === me.data?.id) && (
-              <Button size="icon" variant="ghost" onClick={() => remove(f.id, f.storage_path)} aria-label="Excluir">
-                <Trash2 className="h-4 w-4" />
+        )
+      }
+    >
+      {files.isPending && <PanelNote className="border-t">Carregando arquivos...</PanelNote>}
+      {files.isError && <PanelNote tone="error" className="border-t">Não foi possível carregar os arquivos.</PanelNote>}
+      {files.data?.length === 0 && (
+        <PanelNote className="border-t">
+          {canUpload ? `Nenhum arquivo ainda. Envie PDF, imagem, ZIP ou documento do Office de até ${MAX_FILE_MB} MB.` : "Nenhum arquivo ainda. A RBS publica este documento aqui."}
+        </PanelNote>
+      )}
+      {!!files.data?.length && (
+        <PanelList>
+          {files.data.map((f) => (
+            <li key={f.id} className="hover:bg-muted/60 flex items-center gap-3 px-5 py-3 transition-colors">
+              <span className="bg-brand-soft text-brand-ink grid h-8 w-8 shrink-0 place-items-center rounded-md">
+                <FileText className="h-4 w-4" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium" title={f.file_name}>{f.file_name}</p>
+                <p className="text-muted-foreground truncate text-xs">
+                  {formatBytes(f.size_bytes)} · {f.uploaded_by_email} · {formatDate(f.created_at)}
+                </p>
+              </div>
+              <Button size="icon" variant="ghost" onClick={() => download(f.storage_path)} aria-label={`Baixar ${f.file_name}`} title="Baixar">
+                <Download className="h-4 w-4" />
               </Button>
-            )}
-          </li>
-        ))}
-      </ul>
-    </div>
+              {(me.data?.isAdmin || f.uploaded_by === me.data?.id) && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="hover:text-destructive"
+                  onClick={() => remove(f.id, f.storage_path)}
+                  aria-label={`Excluir ${f.file_name}`}
+                  title="Excluir"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </li>
+          ))}
+        </PanelList>
+      )}
+    </Panel>
   );
 }

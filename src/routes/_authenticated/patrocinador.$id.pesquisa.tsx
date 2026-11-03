@@ -2,9 +2,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
+import { Panel, PanelNote } from "@/components/Panel";
 import { TabGate } from "@/components/TabGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,25 +56,39 @@ function Questions({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   });
   const locked = !!q.data?.locked && !isAdmin;
   return (
-    <div className="bg-card space-y-3 rounded-2xl border p-5">
-      <h3 className="font-bold">Suas 3 perguntas</h3>
-      {(["q1", "q2", "q3"] as const).map((k, i) => (
-        <div key={k} className="space-y-1">
-          <Label>Pergunta {i + 1}</Label>
-          <Input disabled={locked} value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} />
+    <Panel
+      title="Suas 3 perguntas"
+      description={locked ? "Perguntas fechadas pela RBS." : "Você pode editar até a RBS fechar o prazo."}
+    >
+      <div className="space-y-3">
+        {(["q1", "q2", "q3"] as const).map((k, i) => (
+          <div key={k} className="space-y-1.5">
+            <Label htmlFor={`survey-${k}`}>Pergunta {i + 1}</Label>
+            <Input
+              id={`survey-${k}`}
+              disabled={locked}
+              value={v[k]}
+              onChange={(e) => setV({ ...v, [k]: e.target.value })}
+              placeholder={`Digite a pergunta ${i + 1} para o público do festival`}
+            />
+          </div>
+        ))}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          {isAdmin ? (
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <Switch checked={v.locked} onCheckedChange={(c) => setV({ ...v, locked: c })} /> Bloquear edição pelo cliente
+            </label>
+          ) : (
+            <span />
+          )}
+          {!locked && (
+            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+              {save.isPending ? "Salvando..." : "Salvar perguntas"}
+            </Button>
+          )}
         </div>
-      ))}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {isAdmin ? (
-          <label className="flex items-center gap-2 text-sm">
-            <Switch checked={v.locked} onCheckedChange={(c) => setV({ ...v, locked: c })} /> Bloquear edição pelo cliente
-          </label>
-        ) : (
-          <span className="text-muted-foreground text-sm">{locked ? "Perguntas fechadas pela RBS." : "Você pode editar até a RBS fechar o prazo."}</span>
-        )}
-        {!locked && <Button onClick={() => save.mutate()} disabled={save.isPending}>Salvar perguntas</Button>}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -104,32 +119,57 @@ function Results({ id, isAdmin }: { id: string; isAdmin: boolean }) {
     return acc;
   }, {});
   return (
-    <div className="bg-card space-y-3 rounded-2xl border p-5">
-      <h3 className="font-bold">Resultados</h3>
-      {Object.keys(groups).length === 0 && <p className="text-muted-foreground text-sm">Os resultados aparecem aqui logo após o evento.</p>}
-      {Object.entries(groups).map(([question, rows]) => (
-        <div key={question}>
-          <p className="text-sm font-semibold">{question}</p>
-          {rows!.map((x) => (
-            <div key={x.id} className="mt-1 flex items-center gap-2 text-sm">
-              <span className="w-20 shrink-0">{x.answer}</span>
-              <div className="bg-muted h-3 flex-1 overflow-hidden rounded-full">
-                <div className="bg-sunset h-full" style={{ width: `${Math.min(100, Number(x.percent))}%` }} />
+    <Panel flush title="Resultados" description="Distribuição percentual das respostas coletadas durante o festival.">
+      {Object.keys(groups).length === 0 ? (
+        <PanelNote className="border-t">Os resultados aparecem aqui logo após o evento.</PanelNote>
+      ) : (
+        <div className="divide-y border-t">
+          {Object.entries(groups).map(([question, rows]) => (
+            <div key={question} className="space-y-2.5 px-5 py-4">
+              <p className="text-sm font-semibold">{question}</p>
+              <div className="space-y-2">
+                {rows!.map((x) => (
+                  <div key={x.id} className="flex items-center gap-3 text-sm">
+                    <span className="w-32 shrink-0 truncate font-medium" title={x.answer}>
+                      {x.answer}
+                    </span>
+                    <div className="bg-secondary h-2.5 flex-1 overflow-hidden rounded-full">
+                      <div className="bg-brand h-full rounded-full" style={{ width: `${Math.min(100, Number(x.percent))}%` }} />
+                    </div>
+                    <span className="tabular w-12 text-right text-xs font-semibold">{Number(x.percent)}%</span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => remove(x.id)}
+                        aria-label="Excluir"
+                        className="text-muted-foreground hover:text-destructive cursor-pointer transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-              <span className="w-10 text-right">{Number(x.percent)}%</span>
-              {isAdmin && <button onClick={() => remove(x.id)} aria-label="Excluir"><Trash2 className="h-3 w-3" /></button>}
             </div>
           ))}
         </div>
-      ))}
+      )}
       {isAdmin && (
-        <form className="grid gap-2 border-t pt-3 sm:grid-cols-[2fr_1fr_90px_auto]" onSubmit={(e) => { e.preventDefault(); add.mutate(); }}>
+        <form
+          className="grid gap-2 border-t px-5 py-4 sm:grid-cols-[2fr_1fr_96px_auto]"
+          onSubmit={(e) => {
+            e.preventDefault();
+            add.mutate();
+          }}
+        >
           <Input required placeholder="Pergunta" value={f.question} onChange={(e) => setF({ ...f, question: e.target.value })} />
           <Input required placeholder="Resposta" value={f.answer} onChange={(e) => setF({ ...f, answer: e.target.value })} />
           <Input required type="number" min={0} max={100} placeholder="%" value={f.percent} onChange={(e) => setF({ ...f, percent: e.target.value })} />
-          <Button type="submit">Adicionar</Button>
+          <Button type="submit" disabled={add.isPending}>
+            <Plus className="h-4 w-4" /> Adicionar
+          </Button>
         </form>
       )}
-    </div>
+    </Panel>
   );
 }

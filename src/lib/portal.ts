@@ -1,6 +1,8 @@
 import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { canAccessTab } from "@/lib/tab-access";
+export { isTabAllowed } from "@/lib/tab-access";
 
 export type Quota = Database["public"]["Enums"]["quota_level"];
 export type Sponsor = Database["public"]["Tables"]["sponsors"]["Row"];
@@ -42,7 +44,8 @@ export const meQuery = queryOptions({
     const { data } = await supabase.auth.getUser();
     const user = data.user;
     if (!user) return null;
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    const { data: roles, error } = await supabase.from("user_roles").select("role").eq("user_id", user.id);
+    if (error) throw error;
     const isAdmin = !!roles?.some((r) => r.role === "admin_rbs");
     return { id: user.id, email: user.email ?? "", isAdmin };
   },
@@ -73,21 +76,19 @@ export const quotaModulesQuery = queryOptions({
 
 export type QuotaModule = Database["public"]["Tables"]["quota_modules"]["Row"];
 
-// The quota → tab map lives in the `quota_modules` table; this only reads it.
-export function isTabAllowed(
-  modules: readonly Pick<QuotaModule, "quota" | "tab_key">[],
-  quota: Quota,
-  tabKey: string,
-) {
-  return modules.some((m) => m.quota === quota && m.tab_key === tabKey);
+// Menu and content gates consume the same database-driven permissions.
+export function useSponsorTabAccess(sponsor: Sponsor | null | undefined) {
+  const me = useMe();
+  const mods = useQuery(quotaModulesQuery);
+  return {
+    isLoading: me.isPending || (!me.data?.isAdmin && mods.isPending),
+    isError: me.isError || (!me.data?.isAdmin && mods.isError),
+    allows: (tabKey: string) => canAccessTab(mods.data, sponsor?.quota, me.data, tabKey),
+  };
 }
 
 export function useTabAccess(sponsor: Sponsor | null | undefined, tabKey: string) {
-  const me = useMe();
-  const mods = useQuery(quotaModulesQuery);
-  if (me.data?.isAdmin) return true;
-  if (!sponsor || !mods.data) return true;
-  return isTabAllowed(mods.data, sponsor.quota, tabKey);
+  return useSponsorTabAccess(sponsor).allows(tabKey);
 }
 
 export function formatBytes(n: number) {
