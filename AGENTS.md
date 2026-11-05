@@ -11,23 +11,23 @@
 
 # Project rules
 
-- New sponsor registration uses a dedicated dialog with profile fields and the existing private commercial-plan file category; retain the created sponsor ID on upload failure so retrying never duplicates the sponsor.
+- New-sponsor dialog keeps the created sponsor ID on upload failure so retries never duplicate it.
 
-- Media presentation classifies submitted materials separately from publications using the shared media helpers; deletion affordances mirror database-enforced ownership rules without replacing RLS.
-- Material attachments use sponsor_files.media_item_id with a sponsor-matched foreign key; render linked files within their material and preserve unlinked legacy files in the same list.
-- Content routes define their own page metadata; the shared portalHead helper keeps sponsor-page social tags consistent.
+- Media helpers separate submitted materials from publications; delete buttons mirror RLS ownership.
+- Material attachments link via sponsor_files.media_item_id; unlinked legacy files stay listed.
+- Routes define own head(); sponsor pages use portalHead.
 
-- The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`), not Lovable Cloud: run schema/data changes against that project, and never assume Lovable can mint a signed-in browser session for it — verify authenticated flows through the app's own sign-in.
+- The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`); Lovable cannot mint sessions for it.
 - Every sponsor data table carries `sponsor_id`, and RLS uses `can_access_sponsor()` — isolation lives in the database, not the UI.
-- Quota → visible tabs is configured in `quota_modules`; never hardcode quota checks in components. A tab whose data must stay restricted is also guarded in RLS through `quota_allows(sponsor_id, tab_key)`, so the rule holds in the database and not only in the menu.
-- Sponsor navigation and content gates share `useSponsorTabAccess` and pure tab-access helpers; missing identity or configuration denies access rather than showing restricted content while loading.
+- Quota → visible tabs is configured in `quota_modules`; `sponsor_tab_overrides` wins over it. Never hardcode quota checks; restricted data is also guarded in RLS via `quota_allows`.
+- Menu and gates share `useSponsorTabAccess`; missing data denies access.
 - Audit history is written by DB triggers (`log_change`) on every data table; add the trigger when adding a table.
-- Commercial-plan audit events include their category in the persisted summary so historical uploads remain identifiable even after the file is deleted; shared audit formatting distinguishes sponsor registration from profile updates.
+- Audit summaries persist the file category so deleted uploads stay identifiable.
 - Files live in the private `sponsor-files` bucket under `{sponsor_id}/...`, metadata in `sponsor_files`, downloads via short-lived signed URLs.
 - Sign-up is limited to `admin_emails` / `sponsor_members`; Admin RBS is granted only to emails listed in `admin_emails` (no first-user bootstrap).
 - Tab menu definitions live in `src/lib/portal.ts` (`TABS`) so the menu mirrors the commercial plan in one place.
 - `drizzle/baseline/` holds schema snapshots for reference only — never apply or edit them; real migrations go through the migration tool.
-- `src/integrations/supabase/types.ts` must keep describing the portal's target schema (the baseline tables, enums and functions) even while the live backend is empty, so the app still typechecks; regenerate it only after the schema has been applied.
+- `types.ts` describes the target schema; regenerate only after schema changes apply.
 
 ## Mapa de Arquivos Funcionais (Navegação Rápida)
 

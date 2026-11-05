@@ -50,6 +50,11 @@ describe("Tab access by sponsorship level", () => {
     }
   });
 
+  it("lets a sponsor exception override the quota default", () => {
+    expect(canAccessTab(CONFIG, "subcota", { isAdmin: false }, "pesquisa", [{ tab_key: "pesquisa", allowed: true }])).toBe(true);
+    expect(canAccessTab(CONFIG, "master", { isAdmin: false }, "midia", [{ tab_key: "midia", allowed: false }])).toBe(false);
+  });
+
   it("allows a tab no level is configured for", () => {
     expect(isTabAllowed(CONFIG, "master", "inexistente")).toBe(false);
   });

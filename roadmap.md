@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Exceções de abas por patrocinador (regras individuais + controles no Perfil para RBS) — testes passaram; conferência com conta conectada não feita
+
 - [x] Unificar controle das abas por cota e impedir Pesquisa para Subcota e Subcota G no menu e no acesso direto — testes passaram e proteção no banco confirmada; teste visual com conta patrocinadora indisponível no Supabase externo
 
 - [x] Identificar cadastro e envio do plano comercial no histórico do patrocinador, mantendo os acessos existentes — registros reais e teste transacional confirmados no banco; conferência visual autenticada indisponível no Supabase externo

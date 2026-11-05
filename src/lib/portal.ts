@@ -77,13 +77,26 @@ export const quotaModulesQuery = queryOptions({
 export type QuotaModule = Database["public"]["Tables"]["quota_modules"]["Row"];
 
 // Menu and content gates consume the same database-driven permissions.
+export const tabOverridesQuery = (sponsorId: string) =>
+  queryOptions({
+    queryKey: ["tab_overrides", sponsorId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sponsor_tab_overrides").select("tab_key,allowed").eq("sponsor_id", sponsorId);
+      if (error) throw error;
+      return data;
+    },
+  });
+
 export function useSponsorTabAccess(sponsor: Sponsor | null | undefined) {
   const me = useMe();
   const mods = useQuery(quotaModulesQuery);
+  const overrides = useQuery({ ...tabOverridesQuery(sponsor?.id ?? ""), enabled: !!sponsor?.id });
+  const needData = !me.data?.isAdmin;
   return {
-    isLoading: me.isPending || (!me.data?.isAdmin && mods.isPending),
-    isError: me.isError || (!me.data?.isAdmin && mods.isError),
-    allows: (tabKey: string) => canAccessTab(mods.data, sponsor?.quota, me.data, tabKey),
+    isLoading: me.isPending || (needData && (mods.isPending || (!!sponsor && overrides.isPending))),
+    isError: me.isError || (needData && (mods.isError || overrides.isError)),
+    allows: (tabKey: string) =>
+      needData && !overrides.data ? false : canAccessTab(mods.data, sponsor?.quota, me.data, tabKey, overrides.data),
   };
 }
 

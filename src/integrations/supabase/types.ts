@@ -251,6 +251,35 @@ export type Database = {
           },
         ]
       }
+      sponsor_tab_overrides: {
+        Row: {
+          allowed: boolean
+          created_at: string
+          sponsor_id: string
+          tab_key: string
+        }
+        Insert: {
+          allowed: boolean
+          created_at?: string
+          sponsor_id: string
+          tab_key: string
+        }
+        Update: {
+          allowed?: boolean
+          created_at?: string
+          sponsor_id?: string
+          tab_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_tab_overrides_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "sponsors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sponsors: {
         Row: {
           cnpj: string | null
