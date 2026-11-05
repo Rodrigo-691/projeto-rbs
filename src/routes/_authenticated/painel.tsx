@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { QUOTA_LABEL, useMe, type Quota } from "@/lib/portal";
 import { NewSponsor } from "@/components/NewSponsor";
+import { MediaSheetImport } from "@/components/MediaSheetImport";
 import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/painel")({
@@ -28,6 +29,7 @@ type Row = {
   name: string;
   quota: Quota;
   segment: string | null;
+  cnpj: string | null;
   sponsor_members: { count: number }[];
   sponsor_files: { count: number }[];
   media_items: { count: number }[];
@@ -41,7 +43,7 @@ function Painel() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sponsors")
-        .select("id,name,quota,segment,sponsor_members(count),sponsor_files(count),media_items(count)")
+        .select("id,name,cnpj,quota,segment,sponsor_members(count),sponsor_files(count),media_items(count)")
         .order("name");
       if (error) throw error;
       return data;
@@ -147,6 +149,7 @@ function Painel() {
           </div>
 
           <FilteredList list={list} />
+          <MediaSheetImport sponsors={list} />
         </div>
       ) : (
         <div className="space-y-6">
