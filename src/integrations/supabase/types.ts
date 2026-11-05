@@ -97,6 +97,39 @@ export type Database = {
           },
         ]
       }
+      media_imports: {
+        Row: {
+          created_at: string
+          errors: Json
+          file_name: string
+          id: string
+          imported_by: string | null
+          imported_by_email: string | null
+          rows_error: number
+          rows_ok: number
+        }
+        Insert: {
+          created_at?: string
+          errors?: Json
+          file_name: string
+          id?: string
+          imported_by?: string | null
+          imported_by_email?: string | null
+          rows_error?: number
+          rows_ok?: number
+        }
+        Update: {
+          created_at?: string
+          errors?: Json
+          file_name?: string
+          id?: string
+          imported_by?: string | null
+          imported_by_email?: string | null
+          rows_error?: number
+          rows_ok?: number
+        }
+        Relationships: []
+      }
       media_items: {
         Row: {
           body: string | null

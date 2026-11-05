@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,11 +53,19 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
         created_at: r.date.toISOString(),
       })),
     );
-    setBusy(false);
     if (error) {
+      setBusy(false);
       toast.error(error.message);
       return;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).from("media_imports").insert({
+      file_name: preview.file,
+      rows_ok: preview.ok.length,
+      rows_error: preview.errors.length,
+      errors: preview.errors,
+    });
+    setBusy(false);
     toast.success(`${preview.ok.length} veiculações importadas`);
     setPreview(null);
     qc.invalidateQueries();
@@ -124,6 +132,70 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
           </div>
         </>
       )}
+      <ImportHistory />
     </Panel>
+  );
+}
+
+type ImportRow = {
+  id: string;
+  file_name: string;
+  imported_by_email: string | null;
+  rows_ok: number;
+  rows_error: number;
+  errors: RowError[];
+  created_at: string;
+};
+
+function ImportHistory() {
+  const q = useQuery({
+    queryKey: ["media_imports"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("media_imports")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return (data ?? []) as ImportRow[];
+    },
+  });
+  return (
+    <div className="border-t">
+      <p className="px-5 pt-4 pb-2 text-sm font-semibold">Histórico de importações</p>
+      {q.isPending ? (
+        <PanelNote>Carregando...</PanelNote>
+      ) : !q.data?.length ? (
+        <PanelNote>Nenhuma importação feita ainda.</PanelNote>
+      ) : (
+        <PanelList>
+          {q.data.map((r) => (
+            <li key={r.id} className="px-5 py-2.5 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">
+                  {new Date(r.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} ·{" "}
+                  {r.imported_by_email ?? "—"}
+                </span>
+                <span className="tabular text-muted-foreground">
+                  {r.rows_ok} posts importados · {r.rows_error} com erro
+                </span>
+              </div>
+              <p className="text-muted-foreground truncate text-xs">{r.file_name}</p>
+              {r.errors?.length > 0 && (
+                <details className="mt-1 text-xs">
+                  <summary className="text-destructive cursor-pointer">Ver erros</summary>
+                  <ul className="mt-1 space-y-0.5">
+                    {r.errors.map((e) => (
+                      <li key={e.line} className="text-destructive">Linha {e.line}: {e.message}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </li>
+          ))}
+        </PanelList>
+      )}
+    </div>
   );
 }
