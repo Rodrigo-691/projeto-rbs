@@ -17,7 +17,7 @@
 - Material attachments link via sponsor_files.media_item_id; unlinked legacy files stay listed.
 - Routes define own head(); sponsor pages use portalHead.
 
-- The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`), not Lovable Cloud: run schema/data changes against that project, and never assume Lovable can mint a signed-in browser session for it — verify authenticated flows through the app's own sign-in.
+- The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`); Lovable cannot mint sessions for it.
 - Every sponsor data table carries `sponsor_id`, and RLS uses `can_access_sponsor()` — isolation lives in the database, not the UI.
 - Quota → visible tabs is configured in `quota_modules`; `sponsor_tab_overrides` wins over it. Never hardcode quota checks; restricted data is also guarded in RLS via `quota_allows`.
 - Menu and gates share `useSponsorTabAccess`; missing data denies access.
@@ -27,7 +27,7 @@
 - Sign-up is limited to `admin_emails` / `sponsor_members`; Admin RBS is granted only to emails listed in `admin_emails` (no first-user bootstrap).
 - Tab menu definitions live in `src/lib/portal.ts` (`TABS`) so the menu mirrors the commercial plan in one place.
 - `drizzle/baseline/` holds schema snapshots for reference only — never apply or edit them; real migrations go through the migration tool.
-- `src/integrations/supabase/types.ts` must keep describing the portal's target schema (the baseline tables, enums and functions) even while the live backend is empty, so the app still typechecks; regenerate it only after the schema has been applied.
+- `types.ts` describes the target schema; regenerate only after schema changes apply.
 
 ## Mapa de Arquivos Funcionais (Navegação Rápida)
 
