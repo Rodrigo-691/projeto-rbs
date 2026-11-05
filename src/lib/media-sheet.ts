@@ -1,5 +1,6 @@
-// Parses the RBS standardized media spreadsheet: Patrocinador | Data | Veículo | Alcance.
-export const SHEET_HEADERS = ["Patrocinador", "Data", "Veículo", "Alcance"] as const;
+// Parses the RBS media spreadsheet: Data | Veículo | <one column per sponsor, cell = alcance>.
+// New sponsors are added as new columns after Veículo; empty or zero cells are skipped.
+export const FIXED_HEADERS = ["Data", "Veículo"] as const;
 export const VEHICLES = ["TV", "Rádio", "Digital", "Jornal"] as const;
 
 type Cell = string | number | boolean | Date | null | undefined | unknown;
@@ -11,12 +12,13 @@ export type RowError = { line: number; message: string };
 const norm = (s: string) =>
   s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
 const digits = (s: string) => s.replace(/\D/g, "");
+const blank = (c: Cell) => c === null || c === undefined || String(c).trim() === "";
 
 function parseDate(v: Cell): Date | null {
-  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : new Date(Date.UTC(v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate(), 12));
   if (typeof v === "number") return new Date(Math.round((v - 25569) * 86400000)); // Excel serial
   if (typeof v === "string") {
-    const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (m) return new Date(Date.UTC(+m[3]!, +m[2]! - 1, +m[1]!, 12));
     const iso = v.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
     if (iso) return new Date(Date.UTC(+iso[1]!, +iso[2]! - 1, +iso[3]!, 12));
@@ -36,31 +38,42 @@ function parseReach(v: Cell): number | null {
 export function parseMediaSheet(rows: readonly (readonly Cell[])[], sponsors: readonly SponsorRef[]) {
   const ok: ParsedRow[] = [];
   const errors: RowError[] = [];
-  const header = (rows[0] ?? []).map((c) => norm(String(c ?? "")));
-  const idx = SHEET_HEADERS.map((h) => header.indexOf(norm(h)));
-  if (idx.some((i) => i < 0)) {
-    return { ok, errors: [{ line: 1, message: `Cabeçalho deve ter as colunas: ${SHEET_HEADERS.join(", ")}` }] };
+  const head = rows[0] ?? [];
+  const header = head.map((c) => norm(String(c ?? "")));
+  const iDate = header.indexOf(norm("Data"));
+  const iVeh = header.indexOf(norm("Veículo"));
+  if (iDate < 0 || iVeh < 0) {
+    return { ok, errors: [{ line: 1, message: "Cabeçalho deve ter Data, Veículo e um patrocinador por coluna" }] };
   }
-  const vehicles = new Map(VEHICLES.map((v) => [norm(v), v as string]));
-  rows.slice(1).forEach((r, i) => {
-    const line = i + 2;
-    const [cs, cd, cv, ca] = idx.map((j) => r[j!]);
-    if ([cs, cd, cv, ca].every((c) => c === null || c === undefined || String(c).trim() === "")) return;
-    const ref = String(cs ?? "").trim();
+  const cols: { i: number; sponsor: SponsorRef }[] = [];
+  head.forEach((c, i) => {
+    if (i <= iVeh || i === iDate || blank(c)) return;
+    const ref = String(c).trim();
     const sponsor =
       sponsors.find((s) => norm(s.name) === norm(ref)) ??
       (digits(ref).length >= 11 ? sponsors.find((s) => s.cnpj && digits(s.cnpj) === digits(ref)) : undefined);
-    const date = parseDate(cd);
-    const vehicle = vehicles.get(norm(String(cv ?? "")));
-    const reach = parseReach(ca);
-    const problems = [
-      !sponsor && `patrocinador "${ref}" não encontrado`,
-      !date && "data inválida (use DD/MM/AAAA)",
-      !vehicle && `veículo deve ser ${VEHICLES.join(", ")}`,
-      reach === null && "alcance deve ser um número",
-    ].filter(Boolean);
+    if (sponsor) cols.push({ i, sponsor });
+    else errors.push({ line: 1, message: `patrocinador "${ref}" não encontrado (coluna ignorada)` });
+  });
+  if (!cols.length && !errors.length) errors.push({ line: 1, message: "Nenhum patrocinador nas colunas após Veículo" });
+  const vehicles = new Map(VEHICLES.map((v) => [norm(v), v as string]));
+  rows.slice(1).forEach((r, k) => {
+    const line = k + 2;
+    if (r.every(blank)) return;
+    const date = parseDate(r[iDate]);
+    const vehicle = vehicles.get(norm(String(r[iVeh] ?? "")));
+    const problems: string[] = [];
+    if (!date) problems.push("data inválida (use DD/MM/AAAA)");
+    if (!vehicle) problems.push(`veículo deve ser ${VEHICLES.join(", ")}`);
+    const found: ParsedRow[] = [];
+    for (const { i, sponsor } of cols) {
+      if (blank(r[i])) continue;
+      const reach = parseReach(r[i]);
+      if (reach === null) problems.push(`alcance de "${sponsor.name}" deve ser um número`);
+      else if (reach > 0) found.push({ line, sponsorId: sponsor.id, sponsorName: sponsor.name, date: date!, vehicle: vehicle!, reach });
+    }
     if (problems.length) errors.push({ line, message: problems.join("; ") });
-    else ok.push({ line, sponsorId: sponsor!.id, sponsorName: sponsor!.name, date: date!, vehicle: vehicle!, reach: reach! });
+    else ok.push(...found);
   });
   return { ok, errors };
 }
