@@ -5,7 +5,7 @@ import { Download, FileSpreadsheet, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
-import { parseMediaSheet, SHEET_HEADERS, type ParsedRow, type RowError } from "@/lib/media-sheet";
+import { parseMediaSheet, FIXED_HEADERS, type ParsedRow, type RowError } from "@/lib/media-sheet";
 
 type SponsorRef = { id: string; name: string; cnpj?: string | null };
 
@@ -18,13 +18,13 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
 
   async function downloadTemplate() {
     const { default: writeXlsxFile } = await import("write-excel-file/browser");
-    const example = sponsorLabel ?? sponsors[0]?.name ?? "Nome do patrocinador";
+    const names = sponsors.length ? sponsors.map((x) => x.name) : [sponsorLabel ?? "Nome do patrocinador"];
     await writeXlsxFile(
       [
-        SHEET_HEADERS.map((h) => ({ value: h, fontWeight: "bold" as const })),
-        [{ value: example }, { value: new Date(), type: Date, format: "dd/mm/yyyy" }, { value: "TV" }, { value: 120000, type: Number }],
+        [...FIXED_HEADERS, ...names].map((h) => ({ value: h, fontWeight: "bold" as const })),
+        [{ value: new Date(), type: Date, format: "dd/mm/yyyy" }, { value: "TV" }, ...names.map(() => ({ value: 0, type: Number }))],
       ],
-      { columns: [{ width: 32 }, { width: 14 }, { width: 14 }, { width: 14 }] },
+      { columns: [{ width: 14 }, { width: 14 }, ...names.map(() => ({ width: 22 }))] },
     ).toFile("modelo-midia-planeta-atlantida.xlsx");
   }
 
@@ -75,7 +75,7 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
     <Panel
       flush
       title="Importar planilha de mídia"
-      description={`Colunas: ${SHEET_HEADERS.join(", ")}. Veículo: TV, Rádio, Digital ou Jornal. Os dados vão direto para o relatório de cada patrocinador.`}
+      description="Colunas: Data, Veículo e, ao lado, uma coluna por patrocinador com o alcance. Para incluir um patrocinador, adicione uma coluna com o nome dele. Veículo: TV, Rádio, Digital ou Jornal. Células vazias ou 0 são ignoradas."
     >
       <div className="flex flex-wrap gap-2 border-t px-5 py-4">
         <Button type="button" variant="outline" onClick={downloadTemplate}>
@@ -105,8 +105,8 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
           </PanelNote>
           {preview.errors.length > 0 && (
             <PanelList>
-              {preview.errors.map((e) => (
-                <li key={e.line} className="text-destructive px-5 py-2 text-sm">
+              {preview.errors.map((e, i) => (
+                <li key={i} className="text-destructive px-5 py-2 text-sm">
                   Linha {e.line}: {e.message}
                 </li>
               ))}
@@ -114,8 +114,8 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
           )}
           {preview.ok.length > 0 && (
             <PanelList>
-              {preview.ok.slice(0, 50).map((r) => (
-                <li key={r.line} className="grid grid-cols-4 gap-3 px-5 py-2 text-sm">
+              {preview.ok.slice(0, 50).map((r, i) => (
+                <li key={i} className="grid grid-cols-4 gap-3 px-5 py-2 text-sm">
                   <span className="truncate font-medium">{r.sponsorName}</span>
                   <span>{r.date.toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
                   <span>{r.vehicle}</span>
@@ -186,8 +186,8 @@ function ImportHistory() {
                 <details className="mt-1 text-xs">
                   <summary className="text-destructive cursor-pointer">Ver erros</summary>
                   <ul className="mt-1 space-y-0.5">
-                    {r.errors.map((e) => (
-                      <li key={e.line} className="text-destructive">Linha {e.line}: {e.message}</li>
+                    {r.errors.map((e, i) => (
+                      <li key={i} className="text-destructive">Linha {e.line}: {e.message}</li>
                     ))}
                   </ul>
                 </details>
