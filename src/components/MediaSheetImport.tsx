@@ -54,7 +54,10 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
       })),
     );
     setBusy(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success(`${preview.ok.length} veiculações importadas`);
     setPreview(null);
     qc.invalidateQueries();
