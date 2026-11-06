@@ -27,10 +27,10 @@ const SIDEBAR_STORAGE_KEY = "pa_portal_sidebar_collapsed";
 
 /** Classes for full link */
 export const navItemClass =
-  "group relative flex h-9 items-center gap-3 rounded-md px-3 text-sm text-sidebar-muted transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring [&_svg]:h-4 [&_svg]:w-4 [&_svg]:shrink-0";
+  "group relative flex h-9 items-center gap-3 rounded-md px-3 text-sm text-sidebar-muted transition-colors duration-150 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring";
 
 export const navItemActiveClass =
-  "bg-sidebar-accent font-medium text-sidebar-accent-foreground [&_svg]:text-brand";
+  "bg-sidebar-accent font-medium text-sidebar-accent-foreground";
 
 /**
  * Enhanced navigation item that adapts when sidebar is collapsed by showing a tooltip on hover.
@@ -64,9 +64,19 @@ export function NavItem({
       )}
       activeProps={{ className: navItemActiveClass }}
     >
-      <Icon aria-hidden className="shrink-0" />
-      {!isCollapsed && <span className="truncate">{label}</span>}
-      {isCollapsed && <span className="sr-only">{label}</span>}
+      {({ isActive }) => (
+        <>
+          <Icon
+            aria-hidden
+            className={cn(
+              "h-4 w-4 shrink-0 transition-colors",
+              isActive ? "text-brand" : "text-sidebar-muted group-hover:text-sidebar-foreground",
+            )}
+          />
+          {!isCollapsed && <span className="truncate">{label}</span>}
+          {isCollapsed && <span className="sr-only">{label}</span>}
+        </>
+      )}
     </Link>
   );
 
@@ -113,7 +123,13 @@ export function NavButton({
         isActive && navItemActiveClass,
       )}
     >
-      <Icon aria-hidden className="shrink-0" />
+      <Icon
+        aria-hidden
+        className={cn(
+          "h-4 w-4 shrink-0 transition-colors",
+          isActive ? "text-brand" : "text-sidebar-muted group-hover:text-sidebar-foreground",
+        )}
+      />
       {!isCollapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>

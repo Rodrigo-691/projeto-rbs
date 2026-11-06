@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/ThemeToggle";
+import logoWhite from "@/assets/planeta-atlantida-logo-white.png";
+import logoDark from "@/assets/planeta-atlantida-logo-dark.png";
 
 interface BrandMarkProps {
   className?: string;
@@ -18,7 +20,7 @@ export function BrandMark({ className, alt = "Planeta Atlântida 2027", variant 
 
   // If auto, dark theme gets the white text logo, light theme gets the dark text logo.
   const isWhiteText = variant === "white-text" || (variant === "auto" && theme === "dark");
-  const src = isWhiteText ? "/planeta-atlantida-logo-white.png" : "/planeta-atlantida-logo-dark.png";
+  const src = isWhiteText ? logoWhite : logoDark;
 
   return (
     <img
