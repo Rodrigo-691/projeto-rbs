@@ -8,6 +8,7 @@ import {
   Calendar,
   CheckCircle2,
   ChevronRight,
+  FileSpreadsheet,
   FileText,
   LayoutDashboard,
   Megaphone,
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { formatDate, QUOTA_LABEL, useMe, type Quota } from "@/lib/portal";
 import { auditDescription } from "@/lib/audit";
 import { NewSponsor } from "@/components/NewSponsor";
+import { MediaSheetImport } from "@/components/MediaSheetImport";
 import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/painel")({
@@ -35,7 +37,7 @@ export const Route = createFileRoute("/_authenticated/painel")({
   component: Painel,
 });
 
-type AdminSection = "overview" | "sponsors" | "team";
+type AdminSection = "overview" | "sponsors" | "media" | "team";
 
 type Row = {
   id: string;
@@ -141,6 +143,12 @@ function Painel() {
         onClick={() => setSection("sponsors")}
       />
       <NavButton
+        label="Planilha de mídia"
+        icon={FileSpreadsheet}
+        isActive={section === "media"}
+        onClick={() => setSection("media")}
+      />
+      <NavButton
         label="Equipe RBS"
         icon={ShieldCheck}
         isActive={section === "team"}
@@ -157,13 +165,20 @@ function Painel() {
           ? "Visão Geral"
           : section === "sponsors"
             ? "Patrocinadores"
-            : "Equipe RBS"
+            : section === "media"
+              ? "Planilha de mídia"
+              : "Equipe RBS"
       }
     >
       {section === "overview" ? (
         <AdminOverview list={list} onGoToSponsors={() => setSection("sponsors")} />
       ) : section === "sponsors" ? (
         <AdminSponsorsSection list={list} />
+      ) : section === "media" ? (
+        <div className="space-y-6">
+          <PageHeader title="Planilha de mídia" description="Envie a planilha padronizada; o alcance de cada patrocinador vai direto para o relatório da marca." />
+          <MediaSheetImport sponsors={list} />
+        </div>
       ) : (
         <div className="space-y-6">
           <PageHeader
