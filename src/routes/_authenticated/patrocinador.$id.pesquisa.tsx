@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Download, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
 import { Panel, PanelNote } from "@/components/Panel";
@@ -26,6 +26,7 @@ function Pesquisa() {
   return (
     <TabGate id={id} tab="pesquisa" title="Pesquisa da ativação" intro="Sua marca tem direito a 3 perguntas personalizadas na pesquisa oficial do festival.">
       <Questions id={id} isAdmin={isAdmin} />
+      {isAdmin && <SurveyTemplate id={id} />}
       <Results id={id} isAdmin={isAdmin} />
       <FileSection sponsorId={id} tab="pesquisa" category="resultado_pesquisa" title="Arquivo de resultados" description="Relatório completo enviado pela empresa de pesquisa." uploader="admin" />
     </TabGate>
@@ -148,6 +149,25 @@ function Results({ id, isAdmin }: { id: string; isAdmin: boolean }) {
           ))}
         </div>
       )}
+    </Panel>
+  );
+}
+
+// Template for the survey results spreadsheet: one row per answer, prefilled with this sponsor's questions.
+function SurveyTemplate({ id }: { id: string }) {
+  async function download() {
+    const { data } = await supabase.from("survey_questions").select("q1,q2,q3").eq("sponsor_id", id).maybeSingle();
+    const qs = [data?.q1, data?.q2, data?.q3].map((q, i) => q?.trim() || `Pergunta ${i + 1}`);
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
+    const head = ["Pergunta", "Resposta", "Percentual (%)"].map((h) => ({ value: h, fontWeight: "bold" as const }));
+    const rows = qs.flatMap((q) => ["Resposta A", "Resposta B"].map((a) => [{ value: q }, { value: a }, { value: 0, type: Number }]));
+    await writeXlsxFile([head, ...rows], { columns: [{ width: 50 }, { width: 28 }, { width: 16 }] }).toFile("modelo-pesquisa-ativacao.xlsx");
+  }
+  return (
+    <Panel title="Modelo da planilha de resultados" description="Uma linha por resposta: Pergunta, Resposta e Percentual (0 a 100). O modelo já vem com as perguntas desta marca.">
+      <Button variant="outline" onClick={() => download().catch(() => toast.error("Não foi possível gerar o modelo."))}>
+        <Download className="h-4 w-4" /> Baixar modelo
+      </Button>
     </Panel>
   );
 }
