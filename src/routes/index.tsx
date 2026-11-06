@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, BarChart3, CheckCircle2, FileText, ShieldCheck, Upload } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { PublicStyleSwitcher, usePublicVariant } from "@/components/PublicStyleSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -46,151 +46,6 @@ const modules = [
 ];
 
 function Index() {
-  const [variant, setVariant] = usePublicVariant();
-  return (
-    <>
-      {variant === "expressive" ? <ExpressiveLanding /> : <SoberLanding />}
-      <PublicStyleSwitcher variant={variant} onChange={setVariant} />
-    </>
-  );
-}
-
-function ExpressiveLanding() {
-  return (
-    <div className="bg-sidebar text-sidebar-foreground flex min-h-dvh flex-col">
-      <header className="border-sidebar-border border-b">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <BrandMark className="h-9 w-9" alt="Planeta Atlântida" />
-            <span className="text-sm font-semibold tracking-tight">Planeta Atlântida · B2B</span>
-          </div>
-          <Button asChild size="sm" className="bg-brand text-sidebar hover:bg-brand/90 font-semibold">
-            <Link to="/auth">Entrar no portal</Link>
-          </Button>
-        </div>
-      </header>
-
-      <main className="flex-1">
-        <section className="border-sidebar-border border-b">
-          <div className="mx-auto grid max-w-6xl lg:grid-cols-12">
-            <div className="flex flex-col justify-between px-6 py-14 lg:col-span-7 lg:border-r lg:border-sidebar-border lg:py-20 lg:pr-12">
-              <div className="flex items-center gap-4">
-                <BrandMark className="h-16 w-16 rounded-xl bg-sidebar-accent p-2" alt="" />
-                <div>
-                  <p className="text-sun text-xs font-semibold">Edição 2026 · Grupo RBS</p>
-                  <p className="text-sidebar-muted text-sm">Central de entregas e resultados das marcas parceiras</p>
-                </div>
-              </div>
-
-              <div className="my-10">
-                <h1 className="font-display text-4xl font-extrabold leading-[1.02] tracking-tight sm:text-6xl">
-                  Portal do Patrocinador
-                </h1>
-                <p className="text-sidebar-muted mt-5 max-w-xl text-lg leading-relaxed">
-                  Acompanhe toda a sua parceria, do contrato ao pós-evento, com entregas organizadas por cota comercial e histórico em tempo real.
-                </p>
-                <div className="mt-8 flex flex-wrap items-center gap-3">
-                  <Button asChild size="lg" className="bg-brand text-sidebar hover:bg-brand/90 font-semibold">
-                    <Link to="/auth">
-                      Entrar no portal <ArrowRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <span className="text-sidebar-muted text-xs">Acesso restrito a e-mails liberados pela RBS</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4 border-t border-sidebar-border pt-6 text-xs">
-                <div>
-                  <p className="text-sun font-semibold">Master · Subcotas</p>
-                  <p className="text-sidebar-muted mt-0.5">Módulos liberados conforme plano</p>
-                </div>
-                <div>
-                  <p className="text-brand font-semibold">Mídia & Ativação</p>
-                  <p className="text-sidebar-muted mt-0.5">Envio de peças e comprovação</p>
-                </div>
-                <div>
-                  <p className="text-highlight font-semibold">Pós-evento</p>
-                  <p className="text-sidebar-muted mt-0.5">Relatório e pesquisa em PNG/PDF</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:col-span-5 lg:grid-cols-1">
-              <div className="bg-brand text-sidebar flex flex-col justify-between p-8">
-                <p className="text-xs font-semibold">Operação centralizada</p>
-                <div className="my-6">
-                  <p className="font-display text-2xl font-extrabold leading-tight">
-                    Do envio da marca ao relatório final de audiência.
-                  </p>
-                  <p className="mt-2 text-sm opacity-85">
-                    MIV, logos, signatários, credenciamento Open Staff e resultados de pesquisa reunidos em uma única trilha por patrocinador.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-1.5 text-xs font-semibold">
-                  <span className="bg-sidebar text-sidebar-foreground rounded-full px-2.5 py-1">Perfil & Cota</span>
-                  <span className="bg-sidebar text-sidebar-foreground rounded-full px-2.5 py-1">Aplicações</span>
-                  <span className="bg-sidebar text-sidebar-foreground rounded-full px-2.5 py-1">Mídia</span>
-                  <span className="bg-sidebar text-sidebar-foreground rounded-full px-2.5 py-1">Pesquisa</span>
-                </div>
-              </div>
-
-              <div className="bg-sun text-graphite flex flex-col justify-between p-8">
-                <p className="text-xs font-semibold">Auditoria e transparência</p>
-                <div className="my-4">
-                  <p className="font-display text-2xl font-extrabold leading-tight">
-                    Cada entrega registrada com data e responsável.
-                  </p>
-                  <p className="mt-2 text-sm opacity-80">
-                    Equipe da marca e time B2B da RBS acompanham a mesma linha do tempo de arquivos e publicações.
-                  </p>
-                </div>
-                <p className="text-xs font-semibold">Grupo RBS · Planejamento B2B</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="bg-background text-foreground">
-          <div className="mx-auto max-w-6xl px-6 py-16">
-            <div className="max-w-xl">
-              <h2 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-                O que você resolve dentro do portal
-              </h2>
-              <p className="text-muted-foreground mt-2 text-sm">
-                Todas as etapas operacionais da parceria organizadas em módulos diretos.
-              </p>
-            </div>
-            <div className="bg-card mt-8 grid divide-y rounded-lg border sm:grid-cols-2 sm:divide-x">
-              {modules.map((f) => (
-                <div key={f.title} className="flex flex-col justify-between p-6">
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="bg-brand-soft text-brand-ink grid h-9 w-9 place-items-center rounded-md">
-                        <f.icon className="h-4 w-4" aria-hidden />
-                      </span>
-                      <span className="text-muted-foreground text-xs font-medium">{f.area}</span>
-                    </div>
-                    <h3 className="mt-4 text-base font-semibold">{f.title}</h3>
-                    <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{f.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="bg-sidebar border-sidebar-border text-sidebar-muted border-t py-6">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 text-xs">
-          <span>Grupo RBS · Planejamento B2B</span>
-          <span>Planeta Atlântida 2026</span>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function SoberLanding() {
   return (
     <div className="bg-background text-foreground flex min-h-dvh flex-col">
       <header className="bg-card border-b">
@@ -202,9 +57,12 @@ function SoberLanding() {
               <span className="text-muted-foreground block text-xs">Planeta Atlântida · Grupo RBS</span>
             </div>
           </div>
-          <Button asChild size="sm">
-            <Link to="/auth">Entrar no portal</Link>
-          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle variant="pill" />
+            <Button asChild size="sm">
+              <Link to="/auth">Entrar no portal</Link>
+            </Button>
+          </div>
         </div>
       </header>
 

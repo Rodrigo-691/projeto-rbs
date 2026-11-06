@@ -1,9 +1,10 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { BrandMark } from "@/components/BrandMark";
-import { PublicStyleSwitcher, usePublicVariant } from "@/components/PublicStyleSwitcher";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +23,6 @@ export const Route = createFileRoute("/reset-password")({
 
 function ResetPage() {
   const navigate = useNavigate();
-  const [variant, setVariant] = usePublicVariant();
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,8 +43,15 @@ function ResetPage() {
   }
 
   return (
-    <>
-      <div className={variant === "expressive" ? "bg-sidebar flex min-h-dvh items-center justify-center px-4" : "bg-background flex min-h-dvh items-center justify-center px-4"}>
+    <div className="bg-background flex min-h-dvh flex-col justify-between px-4 py-6">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between">
+        <Link to="/auth" className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm">
+          <ArrowLeft className="h-4 w-4" /> Voltar ao login
+        </Link>
+        <ThemeToggle variant="pill" />
+      </div>
+
+      <div className="my-auto flex justify-center py-8">
         <form onSubmit={submit} className="bg-card text-foreground w-full max-w-sm space-y-5 rounded-lg border p-7">
           <div className="flex items-center gap-3">
             <BrandMark className="h-9 w-9" alt="" />
@@ -74,7 +81,8 @@ function ResetPage() {
           </Button>
         </form>
       </div>
-      <PublicStyleSwitcher variant={variant} onChange={setVariant} />
-    </>
+
+      <p className="text-muted-foreground text-center text-xs">Grupo RBS · Planejamento B2B</p>
+    </div>
   );
 }

@@ -1,25 +1,34 @@
-import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import brandIcon from "@/assets/planeta-atlantida-icon.png.asset.json";
+import { useTheme } from "@/components/ThemeToggle";
 
-const FALLBACK = "/favicon.png";
+interface BrandMarkProps {
+  className?: string;
+  alt?: string;
+  /** Force specific variant. If omitted, follows current theme/surface. */
+  variant?: "dark-text" | "white-text" | "auto";
+}
 
-/** Planeta Atlântida mark. Falls back to the bundled favicon when the hosted asset is unavailable. */
-export function BrandMark({ className, alt = "" }: { className?: string; alt?: string }) {
-  const [src, setSrc] = useState(brandIcon.url);
-  const ref = useRef<HTMLImageElement>(null);
-  // An image that failed before hydration never fires React's onError, so check once on mount.
-  useEffect(() => {
-    const img = ref.current;
-    if (img && img.complete && img.naturalWidth === 0) setSrc(FALLBACK);
-  }, []);
+/**
+ * Planeta Atlântida 2027 logo.
+ * Adapts between the version with white text (for dark backgrounds) and dark text (for light backgrounds)
+ * so the curved text "PLANETA ATLÂNTIDA 2027" is always crisp, legible and never washed out.
+ */
+export function BrandMark({ className, alt = "Planeta Atlântida 2027", variant = "auto" }: BrandMarkProps) {
+  const [theme] = useTheme();
+
+  // If auto, dark theme gets the white text logo, light theme gets the dark text logo.
+  const isWhiteText = variant === "white-text" || (variant === "auto" && theme === "dark");
+  const src = isWhiteText ? "/planeta-atlantida-logo-white.png" : "/planeta-atlantida-logo-dark.png";
+
   return (
     <img
-      ref={ref}
       src={src}
       alt={alt}
-      onError={() => setSrc(FALLBACK)}
-      className={cn("shrink-0 object-contain", className)}
+      width={512}
+      height={512}
+      className={cn("shrink-0 aspect-square object-contain", className)}
+      loading="eager"
+      decoding="async"
     />
   );
 }

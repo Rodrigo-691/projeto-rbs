@@ -14,7 +14,7 @@ export const QUOTA_LABEL: Record<Quota, string> = {
 };
 
 export const TABS = [
-  { key: "perfil", label: "Perfil do cliente", to: "/patrocinador/$id" },
+  { key: "perfil", label: "Perfil do cliente", to: "/patrocinador/$id/perfil" },
   { key: "aplicacoes", label: "Aplicações de marca", to: "/patrocinador/$id/aplicacoes" },
   { key: "midia", label: "Mídia e conteúdo", to: "/patrocinador/$id/midia" },
   { key: "cortesias", label: "Cortesias", to: "/patrocinador/$id/cortesias" },

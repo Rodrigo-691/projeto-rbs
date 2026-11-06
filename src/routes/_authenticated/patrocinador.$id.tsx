@@ -8,12 +8,13 @@ import {
   FileText,
   History,
   IdCard,
+  LayoutDashboard,
   Megaphone,
   Palette,
   Ticket,
   type LucideIcon,
 } from "lucide-react";
-import { AppShell, NavGroup, navItemActiveClass, navItemClass } from "@/components/AppShell";
+import { AppShell, NavGroup, NavItem, useSidebar } from "@/components/AppShell";
 import { Panel } from "@/components/Panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QuotaTag } from "@/components/QuotaTag";
@@ -35,6 +36,89 @@ const TAB_ICON: Record<(typeof TABS)[number]["key"], LucideIcon> = {
   pesquisa: ClipboardList,
   contrato: FileText,
 };
+
+function SponsorNavContent({
+  sponsor,
+  isAdmin,
+  access,
+  id,
+}: {
+  sponsor: NonNullable<ReturnType<typeof useQuery<any>>["data"]>;
+  isAdmin: boolean;
+  access: ReturnType<typeof useSponsorTabAccess>;
+  id: string;
+}) {
+  const { isCollapsed } = useSidebar();
+
+  return (
+    <>
+      {isAdmin && (
+        <NavItem
+          to="/painel"
+          label="Todos os patrocinadores"
+          icon={ArrowLeft}
+        />
+      )}
+
+      {!isCollapsed ? (
+        <div className="px-3 pb-1 pt-1">
+          <p className="line-clamp-2 text-[15px] font-semibold leading-snug" title={sponsor.name}>
+            {sponsor.name}
+          </p>
+          <div className="mt-2">
+            <QuotaTag quota={sponsor.quota} onDark />
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-center py-1">
+          <QuotaTag quota={sponsor.quota} onDark className="px-1.5 text-[10px]" />
+        </div>
+      )}
+
+      <NavGroup label="Visão geral">
+        <NavItem
+          to="/patrocinador/$id"
+          params={{ id }}
+          label="Início"
+          icon={LayoutDashboard}
+          exact
+        />
+      </NavGroup>
+
+      <NavGroup label="Parceria">
+        {TABS.map((t) => {
+          if (!access.allows(t.key)) return null;
+          const Icon = TAB_ICON[t.key];
+          return (
+            <NavItem
+              key={t.key}
+              to={t.to}
+              params={{ id }}
+              label={t.label}
+              icon={Icon}
+              exact
+            />
+          );
+        })}
+      </NavGroup>
+
+      <NavGroup label="Resultados">
+        <NavItem
+          to="/patrocinador/$id/relatorio"
+          params={{ id }}
+          label="Relatório"
+          icon={BarChart3}
+        />
+        <NavItem
+          to="/patrocinador/$id/historico"
+          params={{ id }}
+          label="Histórico"
+          icon={History}
+        />
+      </NavGroup>
+    </>
+  );
+}
 
 function SponsorLayout() {
   const { id } = Route.useParams();
@@ -64,7 +148,7 @@ function SponsorLayout() {
 
   if (!sponsor.data)
     return (
-      <AppShell nav={isAdmin ? <BackToList /> : null}>
+      <AppShell nav={isAdmin ? <NavItem to="/painel" label="Todos os patrocinadores" icon={ArrowLeft} /> : null}>
         <Panel title="Patrocinador não encontrado ou sem acesso">
           <p className="text-muted-foreground text-sm">
             Confira o link ou peça ao time B2B da RBS para liberar o seu e-mail nesta marca.
@@ -75,48 +159,11 @@ function SponsorLayout() {
 
   const s = sponsor.data;
 
-  const nav = (
-    <>
-      {isAdmin && <BackToList />}
-      <div className="px-3 pb-1 pt-1">
-        <p className="line-clamp-2 text-[15px] font-semibold leading-snug" title={s.name}>
-          {s.name}
-        </p>
-        <div className="mt-2">
-          <QuotaTag quota={s.quota} onDark />
-        </div>
-      </div>
-      <NavGroup label="Parceria">
-        {TABS.map((t) => {
-          if (!access.allows(t.key)) return null;
-          const Icon = TAB_ICON[t.key];
-          return (
-            <Link
-              key={t.key}
-              to={t.to}
-              params={{ id }}
-              activeOptions={{ exact: true }}
-              className={navItemClass}
-              activeProps={{ className: navItemActiveClass }}
-            >
-              <Icon aria-hidden /> <span className="truncate">{t.label}</span>
-            </Link>
-          );
-        })}
-      </NavGroup>
-      <NavGroup label="Resultados">
-        <Link to="/patrocinador/$id/relatorio" params={{ id }} className={navItemClass} activeProps={{ className: navItemActiveClass }}>
-          <BarChart3 aria-hidden /> Relatório
-        </Link>
-        <Link to="/patrocinador/$id/historico" params={{ id }} className={navItemClass} activeProps={{ className: navItemActiveClass }}>
-          <History aria-hidden /> Histórico
-        </Link>
-      </NavGroup>
-    </>
-  );
-
   return (
-    <AppShell nav={nav} mobileTitle={s.name}>
+    <AppShell
+      nav={<SponsorNavContent sponsor={s} isAdmin={isAdmin} access={access} id={id} />}
+      mobileTitle={s.name}
+    >
       {isAdmin && (
         <nav aria-label="Trilha" className="text-muted-foreground mb-5 flex min-w-0 items-center gap-1.5 text-sm">
           <Link to="/painel" className="hover:text-foreground shrink-0 transition-colors">
@@ -130,13 +177,5 @@ function SponsorLayout() {
         <Outlet />
       </div>
     </AppShell>
-  );
-}
-
-function BackToList() {
-  return (
-    <Link to="/painel" className={navItemClass}>
-      <ArrowLeft aria-hidden /> Todos os patrocinadores
-    </Link>
   );
 }
