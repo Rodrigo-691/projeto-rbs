@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
 import { Panel, PanelNote } from "@/components/Panel";
@@ -58,7 +58,7 @@ function Questions({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   return (
     <Panel
       title="Suas 3 perguntas"
-      description={locked ? "Perguntas fechadas pela RBS." : "Você pode editar até a RBS fechar o prazo."}
+      description={locked ? "Perguntas enviadas. Para alterar, fale com a equipe RBS." : isAdmin ? "A RBS pode editar e desbloquear as perguntas." : "Atenção: depois de salvar, as perguntas ficam bloqueadas para edição."}
     >
       <div className="space-y-3">
         {(["q1", "q2", "q3"] as const).map((k, i) => (
@@ -82,7 +82,13 @@ function Questions({ id, isAdmin }: { id: string; isAdmin: boolean }) {
             <span />
           )}
           {!locked && (
-            <Button onClick={() => save.mutate()} disabled={save.isPending}>
+            <Button
+              onClick={() => {
+                if (!isAdmin && !window.confirm("Depois de salvar, as perguntas não poderão mais ser editadas. Deseja enviar?")) return;
+                save.mutate();
+              }}
+              disabled={save.isPending}
+            >
               {save.isPending ? "Salvando..." : "Salvar perguntas"}
             </Button>
           )}
@@ -97,18 +103,6 @@ function Results({ id, isAdmin }: { id: string; isAdmin: boolean }) {
   const r = useQuery({
     queryKey: ["survey_r", id],
     queryFn: async () => (await supabase.from("survey_results").select("*").eq("sponsor_id", id).order("question")).data ?? [],
-  });
-  const [f, setF] = useState({ question: "", answer: "", percent: "" });
-  const add = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from("survey_results").insert({ sponsor_id: id, question: f.question, answer: f.answer, percent: Number(f.percent) });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setF({ ...f, answer: "", percent: "" });
-      qc.invalidateQueries({ queryKey: ["survey_r", id] });
-    },
-    onError: (e: Error) => toast.error(e.message),
   });
   async function remove(rid: string) {
     await supabase.from("survey_results").delete().eq("id", rid);
@@ -153,22 +147,6 @@ function Results({ id, isAdmin }: { id: string; isAdmin: boolean }) {
             </div>
           ))}
         </div>
-      )}
-      {isAdmin && (
-        <form
-          className="grid gap-2 border-t px-5 py-4 sm:grid-cols-[2fr_1fr_96px_auto]"
-          onSubmit={(e) => {
-            e.preventDefault();
-            add.mutate();
-          }}
-        >
-          <Input required placeholder="Pergunta" value={f.question} onChange={(e) => setF({ ...f, question: e.target.value })} />
-          <Input required placeholder="Resposta" value={f.answer} onChange={(e) => setF({ ...f, answer: e.target.value })} />
-          <Input required type="number" min={0} max={100} placeholder="%" value={f.percent} onChange={(e) => setF({ ...f, percent: e.target.value })} />
-          <Button type="submit" disabled={add.isPending}>
-            <Plus className="h-4 w-4" /> Adicionar
-          </Button>
-        </form>
       )}
     </Panel>
   );
