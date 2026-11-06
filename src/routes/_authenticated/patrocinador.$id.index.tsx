@@ -55,7 +55,7 @@ function SponsorOverview() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sponsor_files")
-        .select("id,tab_key,category,file_name,created_at")
+        .select("id,tab,category,file_name,created_at")
         .eq("sponsor_id", id);
       if (error) throw error;
       return data ?? [];
@@ -67,7 +67,7 @@ function SponsorOverview() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("media_items")
-        .select("id,vehicle,reach")
+        .select("id,channel,reach")
         .eq("sponsor_id", id);
       if (error) throw error;
       return data ?? [];
@@ -111,9 +111,9 @@ function SponsorOverview() {
 
   // Status checks for deliverables
   const profileComplete = Boolean(s.cnpj && (s.contact_name || s.contact_phone));
-  const brandUploaded = files.some((f) => f.tab_key === "aplicacoes");
-  const contractUploaded = files.some((f) => f.tab_key === "contrato");
-  const hasMedia = mediaItems.length > 0 || files.some((f) => f.tab_key === "midia");
+  const brandUploaded = files.some((f) => f.tab === "aplicacoes");
+  const contractUploaded = files.some((f) => f.tab === "contrato");
+  const hasMedia = mediaItems.length > 0 || files.some((f) => f.tab === "midia");
   const membersInvited = members.length > 0;
 
   const totalReach = mediaItems.reduce((acc, curr) => acc + (curr.reach ?? 0), 0);

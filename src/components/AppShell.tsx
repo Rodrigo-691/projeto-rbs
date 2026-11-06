@@ -43,7 +43,7 @@ export function NavItem({
   exact = false,
   className,
 }: {
-  to: LinkProps["to"];
+  to: NonNullable<LinkProps["to"]>;
   params?: LinkProps["params"];
   label: string;
   icon: React.ComponentType<{ className?: string }>;
@@ -55,7 +55,7 @@ export function NavItem({
   const link = (
     <Link
       to={to}
-      params={params}
+      {...(params ? { params } : {})}
       activeOptions={{ exact }}
       className={cn(
         navItemClass,
