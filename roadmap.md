@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Remover cadastro manual de publicações e adicionar respostas RBS com texto e comprovação por material, mantendo publicações existentes para consulta.
+- [x] Remover cadastro manual de publicações e adicionar respostas RBS com texto e comprovação por material, mantendo publicações existentes para consulta — 13 testes passaram; verificação autenticada indisponível no Supabase externo.
 
 - [x] Planilha padronizada de mídia (Patrocinador, Data, Veículo, Alcance) com vários patrocinadores, importada no painel RBS direto para os relatórios — testes passaram; importação com conta real não verificada
 

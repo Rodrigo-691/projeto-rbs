@@ -5,7 +5,7 @@ import { BUCKET, formatBytes } from "@/lib/portal";
 import type { MaterialFile } from "@/lib/media";
 import { Button } from "@/components/ui/button";
 
-export function MaterialAttachment({ file }: { file: MaterialFile }) {
+export function MaterialAttachment({ file }: { file: Pick<MaterialFile, "storage_path" | "file_name" | "size_bytes"> }) {
   async function download() {
     const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(file.storage_path, 60);
     if (error || !data) { toast.error(error?.message ?? "Não foi possível baixar o anexo."); return; }

@@ -180,6 +180,66 @@ export type Database = {
           },
         ]
       }
+      media_material_replies: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string
+          created_by_email: string | null
+          file_name: string | null
+          id: string
+          media_item_id: string
+          mime_type: string | null
+          size_bytes: number
+          sponsor_id: string
+          storage_path: string | null
+          title: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string
+          created_by_email?: string | null
+          file_name?: string | null
+          id?: string
+          media_item_id: string
+          mime_type?: string | null
+          size_bytes?: number
+          sponsor_id: string
+          storage_path?: string | null
+          title?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string
+          created_by_email?: string | null
+          file_name?: string | null
+          id?: string
+          media_item_id?: string
+          mime_type?: string | null
+          size_bytes?: number
+          sponsor_id?: string
+          storage_path?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "media_material_replies_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "sponsors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reply_material_sponsor_fk"
+            columns: ["media_item_id", "sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "media_items"
+            referencedColumns: ["id", "sponsor_id"]
+          },
+        ]
+      }
       quota_modules: {
         Row: {
           quota: Database["public"]["Enums"]["quota_level"]

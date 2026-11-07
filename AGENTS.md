@@ -15,6 +15,7 @@
 
 - Media helpers separate submitted materials from publications; delete buttons mirror RLS ownership.
 - Material attachments link via sponsor_files.media_item_id; unlinked legacy files stay listed.
+- RBS replies use media_material_replies with a sponsor/material composite foreign key and private attachment metadata, keeping replies isolated from report publications.
 - Routes define own head(); sponsor pages use portalHead.
 
 - The live database is the user's own external Supabase project (currently ref `tsnolyvatlustxpqfrhg`); Lovable cannot mint sessions for it.

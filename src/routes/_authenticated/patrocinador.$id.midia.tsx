@@ -11,11 +11,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ALLOWED_TYPES, BUCKET, MAX_FILE_MB, formatDate, useMe } from "@/lib/portal";
 import { canDeleteMedia, groupMaterialFiles, splitMediaItems, type MediaItem } from "@/lib/media";
 import { MaterialAttachment } from "@/components/MaterialAttachment";
+import { MaterialReplies } from "@/components/MaterialReplies";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/midia")({
   head: () => ({
@@ -47,10 +47,17 @@ function Midia() {
       return data;
     },
   });
-  const [form, setForm] = useState({ kind: "material" as Kind, title: "", body: "", url: "", channel: "", reach: "" });
+  const [form, setForm] = useState({ title: "", body: "" });
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const materialMode = !isAdmin || form.kind === "material";
+  const replies = useQuery({
+    queryKey: ["material-replies", id],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("media_material_replies").select("*").eq("sponsor_id", id).order("created_at", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
   const files = useQuery({
     queryKey: ["files", id, "material"],
     queryFn: async () => {
@@ -62,7 +69,8 @@ function Midia() {
   const add = useMutation({
     mutationFn: async () => {
       let path: string | null = null;
-      const file = materialMode ? attachment : null;
+      const file = attachment;
+      if (!form.title.trim()) throw new Error("Preencha o título do material.");
       if (file) {
         if (file.size > MAX_FILE_MB * 1024 * 1024) throw new Error(`Arquivo maior que ${MAX_FILE_MB} MB`);
         if (!ALLOWED_TYPES.includes(file.type)) throw new Error("Tipo de arquivo não permitido");
@@ -74,12 +82,12 @@ function Midia() {
         .from("media_items")
         .insert({
           sponsor_id: id,
-          kind: isAdmin ? form.kind : "material",
+          kind: "material",
           title: form.title.trim(),
           body: form.body || null,
-          url: materialMode ? null : form.url || null,
-          channel: materialMode ? null : form.channel || null,
-          reach: !materialMode && form.reach ? Number(form.reach) : null,
+          url: null,
+          channel: null,
+          reach: null,
         })
         .select("id")
         .single();
@@ -106,9 +114,9 @@ function Midia() {
       }
     },
     onSuccess: () => {
-      setForm({ ...form, title: "", body: "", url: "", channel: "", reach: "" });
+      setForm({ title: "", body: "" });
       setAttachment(null);
-      toast.success(materialMode ? "Material enviado" : "Registrado");
+      toast.success("Material enviado");
       qc.invalidateQueries({ queryKey: ["media", id] });
       qc.invalidateQueries({ queryKey: ["files", id, "material"] });
       qc.invalidateQueries({ queryKey: ["audit", id] });
@@ -120,16 +128,19 @@ function Midia() {
   const remove = useMutation({
     mutationFn: async (mid: string) => {
       const attachments = (files.data ?? []).filter((file) => file.media_item_id === mid);
+      const proofPaths = (replies.data ?? []).filter((reply) => reply.media_item_id === mid).flatMap((reply) => reply.storage_path ? [reply.storage_path] : []);
+      const paths = [...attachments.map((file) => file.storage_path), ...proofPaths];
       const { data, error } = await supabase.from("media_items").delete().eq("id", mid).eq("sponsor_id", id).select("id");
       if (error) throw error;
       if (!data?.length) throw new Error("Não foi possível excluir este conteúdo.");
-      if (attachments.length) {
-        const deleted = await supabase.storage.from(BUCKET).remove(attachments.map((file) => file.storage_path));
+      if (paths.length) {
+        const deleted = await supabase.storage.from(BUCKET).remove(paths);
         if (deleted.error) toast.warning("Material excluído, mas não foi possível limpar o arquivo armazenado.");
       }
     },
     onSuccess: () => {
       toast.success("Conteúdo excluído");
+      qc.invalidateQueries({ queryKey: ["material-replies", id] });
       qc.invalidateQueries({ queryKey: ["media", id] });
       qc.invalidateQueries({ queryKey: ["files", id, "material"] });
       qc.invalidateQueries({ queryKey: ["audit", id] });
@@ -161,6 +172,7 @@ function Midia() {
               <p className="text-muted-foreground mt-1.5 break-words text-xs">
                 {m.created_by_email} · {formatDate(m.created_at)}
               </p>
+              {m.kind === "material" && <MaterialReplies material={m} replies={replies.data ?? []} viewer={me.data} />}
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {m.url && (
@@ -193,12 +205,8 @@ function Midia() {
   return (
     <TabGate id={id} tab="midia" title="Mídia e conteúdo" intro="Envie materiais e acompanhe o que foi veiculado. Os dados alimentam o relatório final.">
       <Panel
-        title={isAdmin ? "Registrar item" : "Enviar material"}
-        description={
-          materialMode
-            ? "Suba textos, briefings e arquivos de campanha para o time de conteúdo da RBS."
-            : "Registre entregas de mídia veiculada ou links publicados para compor o relatório."
-        }
+        title="Enviar material"
+        description="Peças, textos e arquivos de campanha."
       >
         <form
           className="grid gap-3 sm:grid-cols-2"
@@ -207,23 +215,7 @@ function Midia() {
             add.mutate();
           }}
         >
-          {isAdmin && (
-            <div className="space-y-1.5">
-              <Label htmlFor="media-kind">Tipo de registro</Label>
-              <NativeSelect
-                id="media-kind"
-                value={form.kind}
-                onChange={(e) => setForm({ ...form, kind: e.target.value as Kind })}
-              >
-                {Object.entries(KIND_LABEL).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </NativeSelect>
-            </div>
-          )}
-          <div className={isAdmin ? "space-y-1.5" : "space-y-1.5 sm:col-span-2"}>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="media-title">Título</Label>
             <Input
               id="media-title"
@@ -234,40 +226,6 @@ function Midia() {
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
           </div>
-          {isAdmin && form.kind !== "material" && (
-            <>
-              <div className="space-y-1.5">
-                <Label htmlFor="media-channel">Canal</Label>
-                <Input
-                  id="media-channel"
-                  placeholder="Canal (TV, Rádio, Instagram...)"
-                  value={form.channel}
-                  onChange={(e) => setForm({ ...form, channel: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="media-reach">Alcance estimado</Label>
-                <Input
-                  id="media-reach"
-                  type="number"
-                  placeholder="Alcance (pessoas)"
-                  value={form.reach}
-                  onChange={(e) => setForm({ ...form, reach: e.target.value })}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="media-url">Link da publicação</Label>
-                <Input
-                  id="media-url"
-                  type="url"
-                  placeholder="Link (opcional)"
-                  value={form.url}
-                  onChange={(e) => setForm({ ...form, url: e.target.value })}
-                />
-              </div>
-            </>
-          )}
-          {(!isAdmin || form.kind === "material") && (
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="media-body">Observações ou texto</Label>
               <Textarea
@@ -278,9 +236,7 @@ function Midia() {
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
               />
             </div>
-          )}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1 sm:col-span-2">
-            {materialMode ? (
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <input
                   ref={fileInput}
@@ -314,11 +270,8 @@ function Midia() {
                   </>
                 )}
               </div>
-            ) : (
-              <span />
-            )}
             <Button type="submit" disabled={add.isPending}>
-              {add.isPending ? "Enviando..." : materialMode ? "Enviar material" : "Salvar"}
+              {add.isPending ? "Enviando..." : "Enviar material"}
             </Button>
           </div>
         </form>
@@ -326,6 +279,7 @@ function Midia() {
 
       <Panel flush title="Materiais enviados" description="Peças e arquivos encaminhados pela marca para produção e veiculação.">
         {mediaList(groups.materials, "Nenhum material enviado ainda.")}
+        {replies.isError && <PanelNote tone="error" className="border-t">Não foi possível carregar as respostas da RBS.</PanelNote>}
         {files.isError && <PanelNote tone="error" className="border-t">Não foi possível carregar os anexos.</PanelNote>}
         {materialGroups.standalone.map((file) => (
           <div key={file.id} className="flex items-start gap-3 border-t px-5 py-3">
@@ -363,7 +317,7 @@ function Midia() {
 
       <FileSection sponsorId={id} tab="midia" category="relatorio_midia" title="Relatórios de mídia (RBS)" description="Planilhas e comprovantes de veiculação consolidados pela RBS." uploader="admin" />
 
-      <Panel flush title="Linha do tempo RBS" description="Veiculações e posts publicados pela RBS durante a parceria.">
+      <Panel flush title="Linha do tempo RBS" description="Publicações registradas e veiculações importadas por planilha.">
         {mediaList(groups.publications, "Nenhuma publicação da RBS ainda.")}
       </Panel>
     </TabGate>
