@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Remover cadastro manual de publicações e adicionar respostas RBS com texto e comprovação por material, mantendo publicações existentes para consulta.
+
 - [x] Planilha padronizada de mídia (Patrocinador, Data, Veículo, Alcance) com vários patrocinadores, importada no painel RBS direto para os relatórios — testes passaram; importação com conta real não verificada
 
 - [x] Exceções de abas por patrocinador (regras individuais + controles no Perfil para RBS) — testes passaram; conferência com conta conectada não feita
