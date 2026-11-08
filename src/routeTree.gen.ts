@@ -20,6 +20,7 @@ import { Route as AuthenticatedPatrocinadorIdAplicacoesRouteImport } from './rou
 import { Route as AuthenticatedPatrocinadorIdContratoRouteImport } from './routes/_authenticated/patrocinador.$id.contrato'
 import { Route as AuthenticatedPatrocinadorIdCortesiasRouteImport } from './routes/_authenticated/patrocinador.$id.cortesias'
 import { Route as AuthenticatedPatrocinadorIdCredenciamentoRouteImport } from './routes/_authenticated/patrocinador.$id.credenciamento'
+import { Route as AuthenticatedPatrocinadorIdFaqRouteImport } from './routes/_authenticated/patrocinador.$id.faq'
 import { Route as AuthenticatedPatrocinadorIdHistoricoRouteImport } from './routes/_authenticated/patrocinador.$id.historico'
 import { Route as AuthenticatedPatrocinadorIdMidiaRouteImport } from './routes/_authenticated/patrocinador.$id.midia'
 import { Route as AuthenticatedPatrocinadorIdPerfilRouteImport } from './routes/_authenticated/patrocinador.$id.perfil'
@@ -86,6 +87,12 @@ const AuthenticatedPatrocinadorIdCredenciamentoRoute =
     path: '/credenciamento',
     getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
   } as any)
+const AuthenticatedPatrocinadorIdFaqRoute =
+  AuthenticatedPatrocinadorIdFaqRouteImport.update({
+    id: '/faq',
+    path: '/faq',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
 const AuthenticatedPatrocinadorIdHistoricoRoute =
   AuthenticatedPatrocinadorIdHistoricoRouteImport.update({
     id: '/historico',
@@ -127,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
   '/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/patrocinador/$id/faq': typeof AuthenticatedPatrocinadorIdFaqRoute
   '/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
   '/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
   '/patrocinador/$id/perfil': typeof AuthenticatedPatrocinadorIdPerfilRoute
@@ -143,6 +151,7 @@ export interface FileRoutesByTo {
   '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
   '/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/patrocinador/$id/faq': typeof AuthenticatedPatrocinadorIdFaqRoute
   '/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
   '/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
   '/patrocinador/$id/perfil': typeof AuthenticatedPatrocinadorIdPerfilRoute
@@ -162,6 +171,7 @@ export interface FileRoutesById {
   '/_authenticated/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/_authenticated/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
   '/_authenticated/patrocinador/$id/credenciamento': typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  '/_authenticated/patrocinador/$id/faq': typeof AuthenticatedPatrocinadorIdFaqRoute
   '/_authenticated/patrocinador/$id/historico': typeof AuthenticatedPatrocinadorIdHistoricoRoute
   '/_authenticated/patrocinador/$id/midia': typeof AuthenticatedPatrocinadorIdMidiaRoute
   '/_authenticated/patrocinador/$id/perfil': typeof AuthenticatedPatrocinadorIdPerfilRoute
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/patrocinador/$id/contrato'
     | '/patrocinador/$id/cortesias'
     | '/patrocinador/$id/credenciamento'
+    | '/patrocinador/$id/faq'
     | '/patrocinador/$id/historico'
     | '/patrocinador/$id/midia'
     | '/patrocinador/$id/perfil'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/patrocinador/$id/contrato'
     | '/patrocinador/$id/cortesias'
     | '/patrocinador/$id/credenciamento'
+    | '/patrocinador/$id/faq'
     | '/patrocinador/$id/historico'
     | '/patrocinador/$id/midia'
     | '/patrocinador/$id/perfil'
@@ -215,6 +227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/patrocinador/$id/contrato'
     | '/_authenticated/patrocinador/$id/cortesias'
     | '/_authenticated/patrocinador/$id/credenciamento'
+    | '/_authenticated/patrocinador/$id/faq'
     | '/_authenticated/patrocinador/$id/historico'
     | '/_authenticated/patrocinador/$id/midia'
     | '/_authenticated/patrocinador/$id/perfil'
@@ -309,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPatrocinadorIdCredenciamentoRouteImport
       parentRoute: typeof AuthenticatedPatrocinadorIdRoute
     }
+    '/_authenticated/patrocinador/$id/faq': {
+      id: '/_authenticated/patrocinador/$id/faq'
+      path: '/faq'
+      fullPath: '/patrocinador/$id/faq'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdFaqRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
     '/_authenticated/patrocinador/$id/historico': {
       id: '/_authenticated/patrocinador/$id/historico'
       path: '/historico'
@@ -352,6 +372,7 @@ interface AuthenticatedPatrocinadorIdRouteChildren {
   AuthenticatedPatrocinadorIdContratoRoute: typeof AuthenticatedPatrocinadorIdContratoRoute
   AuthenticatedPatrocinadorIdCortesiasRoute: typeof AuthenticatedPatrocinadorIdCortesiasRoute
   AuthenticatedPatrocinadorIdCredenciamentoRoute: typeof AuthenticatedPatrocinadorIdCredenciamentoRoute
+  AuthenticatedPatrocinadorIdFaqRoute: typeof AuthenticatedPatrocinadorIdFaqRoute
   AuthenticatedPatrocinadorIdHistoricoRoute: typeof AuthenticatedPatrocinadorIdHistoricoRoute
   AuthenticatedPatrocinadorIdMidiaRoute: typeof AuthenticatedPatrocinadorIdMidiaRoute
   AuthenticatedPatrocinadorIdPerfilRoute: typeof AuthenticatedPatrocinadorIdPerfilRoute
@@ -370,6 +391,7 @@ const AuthenticatedPatrocinadorIdRouteChildren: AuthenticatedPatrocinadorIdRoute
       AuthenticatedPatrocinadorIdCortesiasRoute,
     AuthenticatedPatrocinadorIdCredenciamentoRoute:
       AuthenticatedPatrocinadorIdCredenciamentoRoute,
+    AuthenticatedPatrocinadorIdFaqRoute: AuthenticatedPatrocinadorIdFaqRoute,
     AuthenticatedPatrocinadorIdHistoricoRoute:
       AuthenticatedPatrocinadorIdHistoricoRoute,
     AuthenticatedPatrocinadorIdMidiaRoute:

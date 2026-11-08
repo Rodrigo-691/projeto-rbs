@@ -12,6 +12,7 @@ import {
   Megaphone,
   Palette,
   Ticket,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 import { AppShell, NavGroup, NavItem, useSidebar } from "@/components/AppShell";
@@ -35,6 +36,7 @@ const TAB_ICON: Record<(typeof TABS)[number]["key"], LucideIcon> = {
   credenciamento: IdCard,
   pesquisa: ClipboardList,
   contrato: FileText,
+  faq: HelpCircle,
 };
 
 function SponsorNavContent({

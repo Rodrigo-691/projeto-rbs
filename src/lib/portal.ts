@@ -21,6 +21,7 @@ export const TABS = [
   { key: "credenciamento", label: "Credenciamento", to: "/patrocinador/$id/credenciamento" },
   { key: "pesquisa", label: "Pesquisa da ativação", to: "/patrocinador/$id/pesquisa" },
   { key: "contrato", label: "Contrato", to: "/patrocinador/$id/contrato" },
+  { key: "faq", label: "Manual & FAQ", to: "/patrocinador/$id/faq" },
 ] as const;
 
 export const BUCKET = "sponsor-files";
