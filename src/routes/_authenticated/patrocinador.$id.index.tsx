@@ -47,6 +47,7 @@ function getDaysUntilFestival(): number {
 function SponsorOverview() {
   const { id } = Route.useParams();
   const me = useMe();
+  const isAdmin = !!me.data?.isAdmin;
   const sponsor = useQuery(sponsorQuery(id));
   const access = useSponsorTabAccess(sponsor.data);
 
@@ -461,13 +462,29 @@ function SponsorOverview() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-xs">
-              <span className="text-muted-foreground">Precisa convidar colegas da sua equipe?</span>
-              <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
-                <Link to="/patrocinador/$id/perfil" params={{ id }}>
-                  Gerenciar acessos
-                </Link>
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-1 pt-1 text-xs">
+              <span className="text-muted-foreground">
+                {isAdmin ? "Precisa convidar colegas da sua equipe?" : "Precisa incluir alguém da sua equipe?"}
+              </span>
+              {isAdmin ? (
+                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs">
+                  <Link to="/patrocinador/$id/perfil" params={{ id }}>
+                    Gerenciar acessos
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild variant="link" size="sm" className="h-auto p-0 text-xs font-semibold text-primary">
+                  <a
+                    href={`mailto:comercial.planeta@gruporbs.com.br?subject=${encodeURIComponent(
+                      `Solicitação de Acesso ao Portal - ${s.name}`
+                    )}&body=${encodeURIComponent(
+                      `Olá equipe RBS,\n\nGostaria de solicitar a liberação de acesso ao Portal do Planeta Atlântida para o seguinte colaborador da equipe ${s.name}:\n\nNome:\nE-mail:\nCargo/Função:\n\nObrigado!`
+                    )}`}
+                  >
+                    Solicitar acesso
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
         </Panel>
