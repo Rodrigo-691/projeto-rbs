@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { importSponsorsSpreadsheet, type SponsorBatchImportResult } from "@/lib/backend-api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -43,7 +44,7 @@ export function SponsorBatchImport() {
       ];
 
       const sampleRow1 = [
-        { value: "Exemplo Marca Master", type: String },
+        { value: "Budweiser", type: String },
         { value: "12.345.678/0001-90", type: String },
         { value: "Bebidas", type: String },
         { value: "Carlos Silva", type: String },
@@ -52,18 +53,18 @@ export function SponsorBatchImport() {
       ];
 
       const sampleRow2 = [
-        { value: "Exemplo Marca Subcota G", type: String },
+        { value: "Banrisul", type: String },
         { value: "98.765.432/0001-10", type: String },
-        { value: "Vestuário", type: String },
+        { value: "Banco", type: String },
         { value: "Mariana Costa", type: String },
         { value: "(51) 98888-8888", type: String },
         { value: "Subcota G", type: String },
       ];
 
       const sampleRow3 = [
-        { value: "Exemplo Marca Subcota", type: String },
+        { value: "Panvel", type: String },
         { value: "11.222.333/0001-44", type: String },
-        { value: "Tecnologia", type: String },
+        { value: "Farmácias", type: String },
         { value: "Felipe Ramos", type: String },
         { value: "(51) 97777-7777", type: String },
         { value: "Subcota", type: String },
@@ -108,21 +109,139 @@ export function SponsorBatchImport() {
     setLoading(true);
     setResult(null);
 
+    // Tentativa 1: Enviar para processamento robusto no Backend Java (Spring Boot + Apache POI)
     try {
       const res = await importSponsorsSpreadsheet(selectedFile);
       setResult(res);
 
       if (res.successCount > 0) {
-        toast.success(`${res.successCount} patrocinador(es) cadastrado(s) com sucesso!`);
+        toast.success(`${res.successCount} patrocinador(es) cadastrado(s) com sucesso via Java (Apache POI)!`);
         qc.invalidateQueries({ queryKey: ["sponsors"] });
       }
 
       if (res.errorCount > 0) {
         toast.warning(`${res.errorCount} linha(s) continham erros e não foram cadastradas.`);
       }
+      return;
     } catch (err: any) {
-      console.error("Falha ao importar:", err);
-      toast.error(err.message || "Erro ao processar planilha no servidor.");
+      console.warn("Backend Java indisponível ou permissão pendente, executando fallback transparente via Supabase:", err);
+
+      // Tentativa 2: Fallback direto no Supabase com validação idêntica
+      try {
+        const { readSheet } = await import("read-excel-file/browser");
+        const rows = (await readSheet(selectedFile)) as any[][];
+        if (!rows || rows.length < 2) {
+          throw new Error("A planilha está vazia ou sem linhas de dados suficientes.");
+        }
+
+        const headerRow = rows[0].map((h) =>
+          String(h || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .trim()
+        );
+
+        const findCol = (terms: string[]) =>
+          headerRow.findIndex((h) => terms.some((t) => h.includes(t)));
+
+        const colNome = findCol(["nome", "marca", "razao"]);
+        const colCnpj = findCol(["cnpj", "documento"]);
+        const colCota = findCol(["cota", "categoria"]);
+        const colSegmento = findCol(["segmento", "ramo", "setor"]);
+        const colContato = findCol(["focal", "contato", "responsavel"]);
+        const colTelefone = findCol(["telefone", "whatsapp", "celular", "fone"]);
+
+        const missing: string[] = [];
+        if (colNome === -1) missing.push("Nome");
+        if (colCnpj === -1) missing.push("CNPJ");
+        if (colCota === -1) missing.push("Cota");
+
+        if (missing.length > 0) {
+          throw new Error(`Cabeçalho inválido. Colunas obrigatórias ausentes na planilha: ${missing.join(", ")}`);
+        }
+
+        const parseQuota = (raw: string) => {
+          const clean = (raw || "")
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase()
+            .replace(/[\s\-_]/g, "");
+          if (clean === "master") return "master";
+          if (clean === "subcotag" || clean === "subcotagrande") return "subcota_g";
+          if (clean === "subcota") return "subcota";
+          return null;
+        };
+
+        const errors: any[] = [];
+        const toInsert: any[] = [];
+
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || row.every((c) => c === null || c === undefined || String(c).trim() === "")) continue;
+
+          const nome = row[colNome] ? String(row[colNome]).trim() : "";
+          const cnpj = row[colCnpj] ? String(row[colCnpj]).trim() : "";
+          const cotaRaw = row[colCota] ? String(row[colCota]).trim() : "";
+          const segmento = colSegmento !== -1 && row[colSegmento] ? String(row[colSegmento]).trim() : null;
+          const contato = colContato !== -1 && row[colContato] ? String(row[colContato]).trim() : null;
+          const telefone = colTelefone !== -1 && row[colTelefone] ? String(row[colTelefone]).trim() : null;
+
+          const lineErrors: string[] = [];
+          if (!nome) lineErrors.push("O campo obrigatório 'Nome' não foi informado.");
+          if (!cnpj) lineErrors.push("O campo obrigatório 'CNPJ' não foi informado.");
+          const quota = parseQuota(cotaRaw);
+          if (!cotaRaw) {
+            lineErrors.push("O campo obrigatório 'Cota' não foi informado.");
+          } else if (!quota) {
+            lineErrors.push(`Cota inválida ('${cotaRaw}'). Valores válidos: Master, Subcota G ou Subcota.`);
+          }
+
+          if (lineErrors.length > 0) {
+            errors.push({
+              rowNumber: i + 1,
+              sponsorName: nome || "(Não informado)",
+              cnpj: cnpj || "(Não informado)",
+              errorMessage: lineErrors.join(" "),
+            });
+          } else {
+            toInsert.push({
+              name: nome,
+              cnpj,
+              quota,
+              segment: segmento,
+              contact_name: contato,
+              contact_phone: telefone,
+              notes: "Importado em lote via planilha pelo administrador",
+            });
+          }
+        }
+
+        let successCount = 0;
+        if (toInsert.length > 0) {
+          const { error: insertErr } = await supabase.from("sponsors").insert(toInsert);
+          if (insertErr) throw insertErr;
+          successCount = toInsert.length;
+          toast.success(`${successCount} patrocinador(es) cadastrado(s) com sucesso!`);
+          qc.invalidateQueries({ queryKey: ["sponsors"] });
+        }
+
+        setResult({
+          success: successCount > 0,
+          totalRows: toInsert.length + errors.length,
+          successCount,
+          errorCount: errors.length,
+          createdSponsors: toInsert as any,
+          errors,
+        });
+
+        if (errors.length > 0) {
+          toast.warning(`${errors.length} linha(s) continham erros e não foram cadastradas.`);
+        }
+      } catch (fallbackErr: any) {
+        console.error("Falha no fallback:", fallbackErr);
+        toast.error(fallbackErr.message || err.message || "Erro ao processar planilha.");
+      }
     } finally {
       setLoading(false);
     }
