@@ -7,12 +7,13 @@ describe("courtesy-sheet", () => {
     expect(formatCpf("123.456.789-01")).toBe("123.456.789-01");
   });
 
-  it("normalizes ticket types to Passaporte, Sexta, or Sábado", () => {
+  it("normalizes ticket types to Passaporte, Sexta, Sábado, or Domingo", () => {
     expect(normalizeTicketType("Passaporte")).toBe("Passaporte");
     expect(normalizeTicketType("sexta-feira")).toBe("Sexta");
     expect(normalizeTicketType("29/01")).toBe("Sexta");
     expect(normalizeTicketType("Sábado")).toBe("Sábado");
     expect(normalizeTicketType("sabado dia 30")).toBe("Sábado");
+    expect(normalizeTicketType("domingo dia 31")).toBe("Domingo");
     expect(normalizeTicketType("outro")).toBe("Passaporte");
   });
 

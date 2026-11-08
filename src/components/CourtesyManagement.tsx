@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
@@ -6,6 +6,8 @@ import {
   CheckCircle2,
   Download,
   FileSpreadsheet,
+  Info,
+  Layers,
   Plus,
   Search,
   Ticket,
@@ -21,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +45,7 @@ import {
   downloadCourtesyTemplate,
   exportCourtesiesToExcel,
   parseCourtesyGrid,
+  type CourtesyQuotaRule,
   type CourtesyRow,
   type ParseCourtesySheetResult,
 } from "@/lib/courtesy-sheet";
@@ -52,6 +56,22 @@ interface CourtesyManagementProps {
   isAdmin: boolean;
 }
 
+const PRESET_SECTORS = [
+  "Camarote",
+  "Arena",
+  "Área VIP",
+  "Premium",
+  "Pista",
+  "Frontstage",
+];
+
+const PRESET_TICKETS = [
+  { value: "Passaporte", label: "Passaporte (2 dias)" },
+  { value: "Sábado", label: "Sábado" },
+  { value: "Domingo", label: "Domingo" },
+  { value: "Sexta", label: "Sexta" },
+];
+
 export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyManagementProps) {
   const qc = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,10 +80,31 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorFilter, setSectorFilter] = useState("all");
   const [ticketFilter, setTicketFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "regular" | "exceeded" | "uncontracted">("all");
 
-  // Admin Quota Modal State
+  // Admin Quota Rules Modal State
   const [isQuotaOpen, setIsQuotaOpen] = useState(false);
-  const [quotaInput, setQuotaInput] = useState<number>(sponsor.courtesy_quota ?? 0);
+
+  // Extract current rules from sponsor
+  const rawRules = (sponsor as any).courtesy_quota_rules;
+  const currentRules: CourtesyQuotaRule[] = useMemo(() => {
+    if (Array.isArray(rawRules) && rawRules.length > 0) {
+      return rawRules;
+    }
+    if ((sponsor.courtesy_quota ?? 0) > 0) {
+      return [
+        {
+          id: "default-rule-1",
+          sector: "Camarote",
+          ticket_type: "Passaporte",
+          quantity: sponsor.courtesy_quota ?? 0,
+        },
+      ];
+    }
+    return [];
+  }, [rawRules, sponsor.courtesy_quota]);
+
+  const [rulesInput, setRulesInput] = useState<CourtesyQuotaRule[]>([]);
 
   // Import Preview Modal State
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -86,53 +127,175 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
   });
 
   const list = courtesiesQuery.data ?? [];
-  const quota = sponsor.courtesy_quota ?? 0;
-  const progressPercent = quota > 0 ? Math.min(100, Math.round((list.length / quota) * 100)) : 0;
+  const totalContractQuota = currentRules.reduce((acc, r) => acc + (Number(r.quantity) || 0), 0) || (sponsor.courtesy_quota ?? 0);
+  const progressPercent = totalContractQuota > 0 ? Math.min(100, Math.round((list.length / totalContractQuota) * 100)) : 0;
 
-  // Filtered rows
-  const filteredList = list.filter((item) => {
-    const term = searchTerm.toLowerCase().trim();
-    const matchesTerm =
-      !term ||
-      item.name.toLowerCase().includes(term) ||
-      item.cpf.toLowerCase().includes(term) ||
-      (item.email && item.email.toLowerCase().includes(term)) ||
-      (item.phone && item.phone.toLowerCase().includes(term));
+  // Normalized group key
+  const getGroupKey = (sector: string, ticket: string) =>
+    `${(sector || "").trim().toLowerCase()}::${(ticket || "").trim().toLowerCase()}`;
 
-    const matchesSector = sectorFilter === "all" || item.sector.toLowerCase() === sectorFilter.toLowerCase();
-    const matchesTicket = ticketFilter === "all" || item.ticket_type.toLowerCase() === ticketFilter.toLowerCase();
+  // Breakdown of beneficiaries by rule
+  const countByGroup = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const b of list) {
+      const k = getGroupKey(b.sector, b.ticket_type);
+      map.set(k, (map.get(k) ?? 0) + 1);
+    }
+    return map;
+  }, [list]);
 
-    return matchesTerm && matchesSector && matchesTicket;
-  });
+  // Quota breakdown per rule
+  const quotaRulesStatus = useMemo(() => {
+    return currentRules.map((rule) => {
+      const k = getGroupKey(rule.sector, rule.ticket_type);
+      const allocated = countByGroup.get(k) ?? 0;
+      const remaining = Math.max(0, rule.quantity - allocated);
+      const exceeded = Math.max(0, allocated - rule.quantity);
+      const percent = rule.quantity > 0 ? Math.min(100, Math.round((allocated / rule.quantity) * 100)) : 0;
+      return {
+        rule,
+        allocated,
+        remaining,
+        exceeded,
+        percent,
+        isFilled: allocated >= rule.quantity,
+        isExceeded: allocated > rule.quantity,
+      };
+    });
+  }, [currentRules, countByGroup]);
 
-  // Sector and Ticket breakdowns
-  const ticketCounts = list.reduce(
-    (acc, row) => {
-      const t = row.ticket_type;
-      if (t === "Passaporte") acc.passaporte++;
-      else if (t === "Sexta") acc.sexta++;
-      else if (t === "Sábado") acc.sabado++;
-      else acc.outros++;
-      return acc;
-    },
-    { passaporte: 0, sexta: 0, sabado: 0, outros: 0 },
-  );
+  // Beneficiaries not matching any rule
+  const uncontractedBeneficiaries = useMemo(() => {
+    if (currentRules.length === 0) return [];
+    return list.filter((b) => {
+      return !currentRules.some(
+        (r) =>
+          r.sector.trim().toLowerCase() === (b.sector || "").trim().toLowerCase() &&
+          r.ticket_type.trim().toLowerCase() === (b.ticket_type || "").trim().toLowerCase()
+      );
+    });
+  }, [list, currentRules]);
 
-  // Mutation: Update Courtesy Quota
-  const updateQuota = useMutation({
-    mutationFn: async (newQuota: number) => {
+  // Beneficiary allocation status
+  const beneficiariesWithStatus = useMemo(() => {
+    const runningCount = new Map<string, number>();
+
+    return list.map((item) => {
+      const k = getGroupKey(item.sector, item.ticket_type);
+      const order = (runningCount.get(k) ?? 0) + 1;
+      runningCount.set(k, order);
+
+      if (currentRules.length === 0) {
+        return {
+          row: item,
+          status: "regular" as const,
+          label: "Cadastrado",
+          order,
+          ruleQuantity: null,
+        };
+      }
+
+      const matchingRule = currentRules.find(
+        (r) =>
+          r.sector.trim().toLowerCase() === (item.sector || "").trim().toLowerCase() &&
+          r.ticket_type.trim().toLowerCase() === (item.ticket_type || "").trim().toLowerCase()
+      );
+
+      if (!matchingRule) {
+        return {
+          row: item,
+          status: "uncontracted" as const,
+          label: "Fora da cota contratada",
+          order,
+          ruleQuantity: null,
+        };
+      }
+
+      if (order > matchingRule.quantity) {
+        return {
+          row: item,
+          status: "exceeded" as const,
+          label: `Excede cota (${order}/${matchingRule.quantity})`,
+          order,
+          ruleQuantity: matchingRule.quantity,
+        };
+      }
+
+      return {
+        row: item,
+        status: "regular" as const,
+        label: `Dentro da cota (${order}/${matchingRule.quantity})`,
+        order,
+        ruleQuantity: matchingRule.quantity,
+      };
+    });
+  }, [list, currentRules]);
+
+  // Filtered rows for the table
+  const filteredBeneficiaries = useMemo(() => {
+    return beneficiariesWithStatus.filter(({ row: item, status }) => {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesTerm =
+        !term ||
+        item.name.toLowerCase().includes(term) ||
+        item.cpf.toLowerCase().includes(term) ||
+        (item.email && item.email.toLowerCase().includes(term)) ||
+        (item.phone && item.phone.toLowerCase().includes(term));
+
+      const matchesSector = sectorFilter === "all" || item.sector.toLowerCase() === sectorFilter.toLowerCase();
+      const matchesTicket = ticketFilter === "all" || item.ticket_type.toLowerCase() === ticketFilter.toLowerCase();
+      const matchesStatus = statusFilter === "all" || status === statusFilter;
+
+      return matchesTerm && matchesSector && matchesTicket && matchesStatus;
+    });
+  }, [beneficiariesWithStatus, searchTerm, sectorFilter, ticketFilter, statusFilter]);
+
+  // Unique sectors for filtering
+  const availableSectors = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of currentRules) set.add(r.sector);
+    for (const b of list) set.add(b.sector);
+    return Array.from(set).filter(Boolean);
+  }, [currentRules, list]);
+
+  // Sector and Ticket breakdowns for quick cards
+  const ticketCounts = useMemo(() => {
+    return list.reduce(
+      (acc, row) => {
+        const t = row.ticket_type;
+        if (t === "Passaporte") acc.passaporte++;
+        else if (t === "Sábado") acc.sabado++;
+        else if (t === "Domingo") acc.domingo++;
+        else if (t === "Sexta") acc.sexta++;
+        else acc.outros++;
+        return acc;
+      },
+      { passaporte: 0, sabado: 0, domingo: 0, sexta: 0, outros: 0 },
+    );
+  }, [list]);
+
+  // Mutation: Save Quota Rules
+  const updateQuotaRules = useMutation({
+    mutationFn: async (rulesToSave: CourtesyQuotaRule[]) => {
+      const validRules = rulesToSave.filter((r) => r.sector.trim() && Number(r.quantity) > 0);
+      const total = validRules.reduce((acc, r) => acc + Number(r.quantity), 0);
+
       const { error } = await supabase
         .from("sponsors")
-        .update({ courtesy_quota: newQuota })
+        .update({
+          courtesy_quota: total,
+          courtesy_quota_rules: validRules as any,
+        })
         .eq("id", sponsorId);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Cota de cortesias atualizada com sucesso");
+      toast.success("Cotas de cortesias atualizadas com sucesso!");
       setIsQuotaOpen(false);
       qc.invalidateQueries({ queryKey: ["sponsor", sponsorId] });
+      qc.invalidateQueries({ queryKey: ["sponsors"] });
     },
-    onError: (err: Error) => toast.error(`Erro ao salvar cota: ${err.message}`),
+    onError: (err: Error) => toast.error(`Erro ao salvar cotas: ${err.message}`),
   });
 
   // Mutation: Delete Single Courtesy
@@ -239,6 +402,49 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
     }
   }
 
+  function handleOpenQuotaModal() {
+    if (currentRules.length > 0) {
+      setRulesInput(
+        currentRules.map((r) => ({
+          ...r,
+          id: r.id || `rule-${Math.random().toString(36).substring(2, 9)}`,
+        }))
+      );
+    } else {
+      setRulesInput([
+        {
+          id: `rule-${Date.now()}-1`,
+          sector: "Camarote",
+          ticket_type: "Passaporte",
+          quantity: 10,
+        },
+      ]);
+    }
+    setIsQuotaOpen(true);
+  }
+
+  function handleAddRule() {
+    setRulesInput((prev) => [
+      ...prev,
+      {
+        id: `rule-${Date.now()}-${prev.length + 1}`,
+        sector: "Arena",
+        ticket_type: "Sábado",
+        quantity: 5,
+      },
+    ]);
+  }
+
+  function handleRemoveRule(id: string) {
+    setRulesInput((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  function handleRuleChange(id: string, field: keyof CourtesyQuotaRule, value: any) {
+    setRulesInput((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
+    );
+  }
+
   function getTicketBadge(ticket: string) {
     if (ticket === "Passaporte") {
       return (
@@ -247,22 +453,75 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         </Badge>
       );
     }
-    if (ticket === "Sexta") {
-      return (
-        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
-          Sexta (29/Jan)
-        </Badge>
-      );
-    }
     if (ticket === "Sábado") {
       return (
         <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
-          Sábado (30/Jan)
+          Sábado
+        </Badge>
+      );
+    }
+    if (ticket === "Domingo") {
+      return (
+        <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30">
+          Domingo
+        </Badge>
+      );
+    }
+    if (ticket === "Sexta") {
+      return (
+        <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30">
+          Sexta
         </Badge>
       );
     }
     return <Badge variant="outline">{ticket}</Badge>;
   }
+
+  // Comparison in import modal against quotas
+  const importBreakdown = useMemo(() => {
+    if (!importResult) return [];
+    const countMap = new Map<string, number>();
+    for (const row of importResult.rows) {
+      const k = getGroupKey(row.sector, row.ticket_type);
+      countMap.set(k, (countMap.get(k) ?? 0) + 1);
+    }
+
+    const items: {
+      sector: string;
+      ticket_type: string;
+      foundInSheet: number;
+      quota: number | null;
+      status: "ok" | "exceeded" | "uncontracted";
+    }[] = [];
+
+    // Checked rules
+    for (const rule of currentRules) {
+      const k = getGroupKey(rule.sector, rule.ticket_type);
+      const found = countMap.get(k) ?? 0;
+      items.push({
+        sector: rule.sector,
+        ticket_type: rule.ticket_type,
+        foundInSheet: found,
+        quota: rule.quantity,
+        status: found > rule.quantity ? "exceeded" : "ok",
+      });
+      countMap.delete(k);
+    }
+
+    // Remaining items from sheet not in rules
+    for (const [k, found] of countMap.entries()) {
+      const [sec, tic] = k.split("::");
+      items.push({
+        sector: sec || "Arena",
+        ticket_type: tic || "Passaporte",
+        foundInSheet: found,
+        quota: null,
+        status: currentRules.length > 0 ? "uncontracted" : "ok",
+      });
+    }
+
+    return items;
+  }, [importResult, currentRules]);
 
   return (
     <div className="space-y-6">
@@ -284,7 +543,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadCourtesyTemplate()}
+              onClick={() => downloadCourtesyTemplate(currentRules, sponsor.name)}
               className="text-xs"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -308,10 +567,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setQuotaInput(sponsor.courtesy_quota ?? 0);
-                    setIsQuotaOpen(true);
-                  }}
+                  onClick={handleOpenQuotaModal}
                   className="text-xs"
                 >
                   <Ticket className="mr-1.5 h-3.5 w-3.5 text-primary" />
@@ -333,16 +589,16 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
       >
         <div className="space-y-5 pt-2">
           {/* Quota Progress Banner */}
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-xl border bg-card p-4 space-y-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">
-                    Cota Contratada de Cortesias:
+                    Cota Contratada Total:
                   </span>
-                  {quota > 0 ? (
-                    <Badge variant="secondary" className="font-bold">
-                      {quota} ingressos
+                  {totalContractQuota > 0 ? (
+                    <Badge variant="secondary" className="font-bold text-sm">
+                      {totalContractQuota} ingressos
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-muted-foreground text-xs">
@@ -351,36 +607,128 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                   )}
                 </div>
                 <p className="text-muted-foreground text-xs mt-0.5">
-                  {quota > 0
-                    ? `${list.length} de ${quota} pessoas cadastradas (${progressPercent}% preenchido)`
-                    : "O administrador RBS definirá o limite de cortesias contratuais para esta marca."}
+                  {totalContractQuota > 0
+                    ? `${list.length} de ${totalContractQuota} pessoas cadastradas (${progressPercent}% preenchido)`
+                    : "O administrador RBS definirá as cotas por setor e dia acordadas em contrato."}
                 </p>
               </div>
 
-              {quota > 0 && (
-                <div className="shrink-0">
-                  {list.length === quota ? (
+              {totalContractQuota > 0 && (
+                <div className="shrink-0 flex items-center gap-2">
+                  {list.length === totalContractQuota ? (
                     <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                       <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
                       Cota 100% preenchida
                     </Badge>
-                  ) : list.length > quota ? (
+                  ) : list.length > totalContractQuota ? (
                     <Badge variant="destructive">
                       <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-                      Excede a cota em {list.length - quota}
+                      Excede o total em {list.length - totalContractQuota}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-primary border-primary/30">
-                      Restam {quota - list.length} vagas
+                      Restam {totalContractQuota - list.length} vagas
                     </Badge>
                   )}
                 </div>
               )}
             </div>
 
-            {quota > 0 && (
-              <div className="mt-3 space-y-1">
+            {totalContractQuota > 0 && (
+              <div className="space-y-1">
                 <Progress value={progressPercent} className="h-2" />
+              </div>
+            )}
+
+            {/* Breakdown por Cota Contratada (Setor + Tipo de Ingresso) */}
+            {quotaRulesStatus.length > 0 && (
+              <div className="pt-2 border-t space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5 text-primary" />
+                    Detalhamento das Cotas por Setor & Tipo
+                  </span>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleOpenQuotaModal}
+                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      Editar cotas
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {quotaRulesStatus.map(({ rule, allocated, remaining, exceeded, percent, isFilled, isExceeded }) => (
+                    <div
+                      key={rule.id}
+                      className="rounded-lg border bg-muted/20 p-3 space-y-2 flex flex-col justify-between"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{rule.sector}</p>
+                          <div className="mt-0.5">{getTicketBadge(rule.ticket_type)}</div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-bold tabular text-foreground">
+                            {allocated} / {rule.quantity}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground">{percent}%</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Progress
+                          value={percent}
+                          className="h-1.5"
+                        />
+                        <div className="flex items-center justify-between text-[11px]">
+                          {isExceeded ? (
+                            <span className="text-destructive font-medium flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Excede em {exceeded}
+                            </span>
+                          ) : isFilled ? (
+                            <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Cota atingida
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">
+                              Restam {remaining} vagas
+                            </span>
+                          )}
+                          <span className="text-muted-foreground font-mono text-[10px]">
+                            Meta: {rule.quantity}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Alerta de Beneficiários fora das cotas contratuais */}
+            {uncontractedBeneficiaries.length > 0 && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2.5">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-0.5 flex-1">
+                  <span className="font-semibold">
+                    {uncontractedBeneficiaries.length} beneficiário(s) cadastrado(s) com setor ou dia fora das cotas contratadas.
+                  </span>
+                  <p className="text-[11px] opacity-90">
+                    Verifique se os setores e tipos informados na planilha correspondem ao contrato ou atualize as cotas contratadas da marca.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setStatusFilter("uncontracted")}
+                  className="h-7 text-xs shrink-0 border-amber-500/40 hover:bg-amber-500/20"
+                >
+                  Filtrar irregulares
+                </Button>
               </div>
             )}
           </div>
@@ -392,21 +740,21 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               <p className="text-lg font-bold text-foreground mt-0.5">{list.length}</p>
             </div>
             <div className="rounded-lg border bg-muted/20 p-3">
-              <span className="text-muted-foreground text-xs">Passaportes</span>
+              <span className="text-muted-foreground text-xs">Passaportes (2 dias)</span>
               <p className="text-lg font-bold text-purple-600 dark:text-purple-400 mt-0.5">
                 {ticketCounts.passaporte}
-              </p>
-            </div>
-            <div className="rounded-lg border bg-muted/20 p-3">
-              <span className="text-muted-foreground text-xs">Ingressos Sexta</span>
-              <p className="text-lg font-bold text-amber-600 dark:text-amber-400 mt-0.5">
-                {ticketCounts.sexta}
               </p>
             </div>
             <div className="rounded-lg border bg-muted/20 p-3">
               <span className="text-muted-foreground text-xs">Ingressos Sábado</span>
               <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
                 {ticketCounts.sabado}
+              </p>
+            </div>
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <span className="text-muted-foreground text-xs">Ingressos Domingo</span>
+              <p className="text-lg font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                {ticketCounts.domingo}
               </p>
             </div>
           </div>
@@ -423,22 +771,56 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
             <div className="relative min-w-[200px]">
               <Search className="text-muted-foreground absolute left-2.5 top-2.5 h-3.5 w-3.5" />
               <Input
-                placeholder="Buscar por nome, CPF..."
+                placeholder="Buscar por nome, CPF ou contato..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-8 pl-8 text-xs"
+                className="pl-8 h-8 text-xs"
               />
             </div>
+
+            <NativeSelect
+              value={sectorFilter}
+              onChange={(e) => setSectorFilter(e.target.value)}
+              className="h-8 text-xs w-[140px]"
+            >
+              <option value="all">Todos os setores</option>
+              {availableSectors.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </NativeSelect>
+
+            <NativeSelect
+              value={ticketFilter}
+              onChange={(e) => setTicketFilter(e.target.value)}
+              className="h-8 text-xs w-[150px]"
+            >
+              <option value="all">Todos os ingressos</option>
+              <option value="Passaporte">Passaporte (2 dias)</option>
+              <option value="Sábado">Sábado</option>
+              <option value="Domingo">Domingo</option>
+              <option value="Sexta">Sexta</option>
+            </NativeSelect>
+
+            {currentRules.length > 0 && (
+              <NativeSelect
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="h-8 text-xs w-[145px]"
+              >
+                <option value="all">Todos os status</option>
+                <option value="regular">Regulares (na cota)</option>
+                <option value="exceeded">Excedentes da cota</option>
+                <option value="uncontracted">Fora do contrato</option>
+              </NativeSelect>
+            )}
           </div>
         }
       >
-        {courtesiesQuery.isLoading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">
-            Carregando lista de cortesias...
-          </div>
-        ) : list.length === 0 ? (
+        {list.length === 0 ? (
           <div className="p-12 text-center">
-            <Ticket className="text-muted-foreground/40 mx-auto h-10 w-10 mb-3" />
+            <Users className="text-muted-foreground mx-auto h-10 w-10 opacity-40 mb-3" />
             <h3 className="text-sm font-semibold text-foreground">Nenhuma cortesia registrada ainda</h3>
             <p className="text-muted-foreground text-xs max-w-md mx-auto mt-1">
               {isAdmin
@@ -449,7 +831,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadCourtesyTemplate()}
+                onClick={() => downloadCourtesyTemplate(currentRules, sponsor.name)}
                 className="text-xs"
               >
                 <Download className="mr-1.5 h-3.5 w-3.5" />
@@ -472,57 +854,86 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[280px]">Nome</TableHead>
-                  <TableHead>CPF</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Setor</TableHead>
-                  <TableHead>Ingresso / Dia</TableHead>
-                  {isAdmin && <TableHead className="text-right">Ação</TableHead>}
+                  <TableHead className="w-[40px] text-xs">#</TableHead>
+                  <TableHead className="text-xs">Nome do Beneficiário</TableHead>
+                  <TableHead className="text-xs">CPF</TableHead>
+                  <TableHead className="text-xs">Contato</TableHead>
+                  <TableHead className="text-xs">Setor</TableHead>
+                  <TableHead className="text-xs">Tipo de Ingresso</TableHead>
+                  {currentRules.length > 0 && <TableHead className="text-xs">Status da Cota</TableHead>}
+                  {isAdmin && <TableHead className="w-[60px] text-right text-xs">Ações</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredList.length === 0 ? (
+                {filteredBeneficiaries.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isAdmin ? 7 : 6} className="h-24 text-center text-xs text-muted-foreground">
+                    <TableCell
+                      colSpan={currentRules.length > 0 ? (isAdmin ? 8 : 7) : (isAdmin ? 7 : 6)}
+                      className="text-center py-8 text-xs text-muted-foreground"
+                    >
                       Nenhum beneficiário encontrado com os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredList.map((row) => (
-                    <TableRow key={row.id || `${row.cpf}-${row.name}`}>
-                      <TableCell className="font-medium text-foreground">
+                  filteredBeneficiaries.map(({ row, status, label, order, ruleQuantity }, idx) => (
+                    <TableRow key={row.id || `${row.cpf}-${idx}`}>
+                      <TableCell className="text-xs text-muted-foreground font-mono">
+                        {idx + 1}
+                      </TableCell>
+                      <TableCell className="text-xs font-semibold text-foreground">
                         {row.name}
                       </TableCell>
-                      <TableCell className="tabular font-mono text-xs text-muted-foreground">
+                      <TableCell className="text-xs font-mono text-muted-foreground">
                         {row.cpf}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {row.email ? (
-                          <a href={`mailto:${row.email}`} className="hover:underline hover:text-primary">
-                            {row.email}
-                          </a>
-                        ) : (
-                          "—"
-                        )}
+                        {row.email && <div className="truncate max-w-[180px]">{row.email}</div>}
+                        {row.phone && <div className="text-[11px] opacity-80">{row.phone}</div>}
+                        {!row.email && !row.phone && "—"}
                       </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {row.phone || "—"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs font-normal">
+                      <TableCell className="text-xs font-medium">
+                        <Badge variant="outline" className="font-normal">
                           {row.sector}
                         </Badge>
                       </TableCell>
                       <TableCell>{getTicketBadge(row.ticket_type)}</TableCell>
+                      {currentRules.length > 0 && (
+                        <TableCell className="text-xs">
+                          {status === "regular" && (
+                            <Badge
+                              variant="outline"
+                              className="text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-normal text-[11px]"
+                            >
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              Regular ({order}/{ruleQuantity})
+                            </Badge>
+                          )}
+                          {status === "exceeded" && (
+                            <Badge
+                              variant="destructive"
+                              className="font-normal text-[11px]"
+                            >
+                              <AlertTriangle className="h-3 w-3 mr-1" />
+                              Excede cota ({order}/{ruleQuantity})
+                            </Badge>
+                          )}
+                          {status === "uncontracted" && (
+                            <Badge
+                              variant="outline"
+                              className="text-amber-700 dark:text-amber-400 border-amber-500/40 bg-amber-500/10 font-normal text-[11px]"
+                            >
+                              Fora da cota
+                            </Badge>
+                          )}
+                        </TableCell>
+                      )}
                       {isAdmin && (
                         <TableCell className="text-right">
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
                             onClick={() => row.id && deleteCourtesy.mutate(row.id)}
-                            disabled={deleteCourtesy.isPending}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
                             title="Remover cortesia"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -538,30 +949,109 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         )}
       </Panel>
 
-      {/* Modal: Definir Cota de Cortesias (Admin RBS) */}
+      {/* Modal: Definir Cotas Contratadas por Setor e Tipo (Admin RBS) */}
       <Dialog open={isQuotaOpen} onOpenChange={setIsQuotaOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Definir Cota de Cortesias</DialogTitle>
+            <DialogTitle>Definir Cotas Contratadas de Cortesias</DialogTitle>
             <DialogDescription>
-              Informe quantas pessoas/ingressos de cortesia foram acordados em contrato para {sponsor.name}.
+              Configure a distribuição de cortesias acordadas em contrato para {sponsor.name}, especificando o setor, tipo de ingresso e quantidade.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="courtesy-quota-input">Quantidade total de cortesias</Label>
-              <Input
-                id="courtesy-quota-input"
-                type="number"
-                min={0}
-                placeholder="Ex: 50"
-                value={quotaInput}
-                onChange={(e) => setQuotaInput(Number(e.target.value) || 0)}
-              />
-              <p className="text-muted-foreground text-xs">
-                Este número será a meta máxima contratual exibida na barra de progresso da marca.
-              </p>
+            <div className="space-y-3">
+              {rulesInput.map((rule, index) => (
+                <div
+                  key={rule.id}
+                  className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 p-3 rounded-lg border bg-muted/20"
+                >
+                  {/* Setor */}
+                  <div className="flex-1 w-full space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Setor</Label>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        placeholder="Ex: Camarote, Arena..."
+                        value={rule.sector}
+                        onChange={(e) => handleRuleChange(rule.id, "sector", e.target.value)}
+                        className="h-8 text-xs"
+                        list={`sectors-list-${rule.id}`}
+                      />
+                      <datalist id={`sectors-list-${rule.id}`}>
+                        {PRESET_SECTORS.map((s) => (
+                          <option key={s} value={s} />
+                        ))}
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Tipo de Ingresso */}
+                  <div className="w-full sm:w-44 space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Tipo de Ingresso</Label>
+                    <NativeSelect
+                      value={rule.ticket_type}
+                      onChange={(e) => handleRuleChange(rule.id, "ticket_type", e.target.value)}
+                      className="h-8 text-xs"
+                    >
+                      {PRESET_TICKETS.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+
+                  {/* Quantidade */}
+                  <div className="w-full sm:w-24 space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Quantidade</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      placeholder="Qtd"
+                      value={rule.quantity || ""}
+                      onChange={(e) =>
+                        handleRuleChange(rule.id, "quantity", Math.max(0, parseInt(e.target.value, 10) || 0))
+                      }
+                      className="h-8 text-xs"
+                    />
+                  </div>
+
+                  {/* Remover Linha */}
+                  <div className="self-end sm:self-center pt-2 sm:pt-4">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveRule(rule.id)}
+                      disabled={rulesInput.length === 1 && index === 0}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      title="Remover esta cota"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Botão Adicionar outra Cota */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddRule}
+              className="w-full text-xs border-dashed"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Adicionar outro setor ou tipo de ingresso
+            </Button>
+
+            {/* Total Geral da Cota */}
+            <div className="flex items-center justify-between rounded-lg border bg-card p-3 text-xs">
+              <span className="text-muted-foreground">Total geral contratado para esta marca:</span>
+              <span className="font-bold text-sm text-foreground tabular">
+                {rulesInput.reduce((acc, r) => acc + (Math.max(0, Number(r.quantity)) || 0), 0)} ingressos
+              </span>
             </div>
           </div>
 
@@ -570,10 +1060,10 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               Cancelar
             </Button>
             <Button
-              onClick={() => updateQuota.mutate(quotaInput)}
-              disabled={updateQuota.isPending}
+              onClick={() => updateQuotaRules.mutate(rulesInput)}
+              disabled={updateQuotaRules.isPending}
             >
-              {updateQuota.isPending ? "Salvando..." : "Salvar Cota"}
+              {updateQuotaRules.isPending ? "Salvando..." : "Salvar Cotas Contratadas"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -581,11 +1071,11 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
 
       {/* Modal: Pré-visualização da Importação da Planilha */}
       <Dialog open={isImportOpen} onOpenChange={setIsImportOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Importar Planilha de Cortesias</DialogTitle>
             <DialogDescription>
-              Revise os dados encontrados no arquivo antes de consolidar no portal da marca.
+              Revise a validação e o comparativo com as cotas contratadas antes de consolidar.
             </DialogDescription>
           </DialogHeader>
 
@@ -597,36 +1087,79 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                   <span className="text-muted-foreground text-xs">Cortesias válidas</span>
                   <p className="text-xl font-bold text-foreground mt-0.5">{importResult.totalValid}</p>
                 </div>
-
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <span className="text-muted-foreground text-xs">Cota da marca</span>
-                  <p className="text-xl font-bold text-primary mt-0.5">
-                    {quota > 0 ? quota : "Sem cota"}
+                  <span className="text-muted-foreground text-xs">Cota total da marca</span>
+                  <p className="text-xl font-bold text-foreground mt-0.5">
+                    {totalContractQuota > 0 ? totalContractQuota : "—"}
                   </p>
                 </div>
-
                 <div className="rounded-lg border bg-muted/30 p-3">
-                  <span className="text-muted-foreground text-xs">Duplicidades na planilha</span>
-                  <p className="text-xl font-bold text-amber-600 mt-0.5">
+                  <span className="text-muted-foreground text-xs">CPFs duplicados</span>
+                  <p
+                    className={`text-xl font-bold mt-0.5 ${
+                      importResult.duplicatesInSheet.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+                    }`}
+                  >
                     {importResult.duplicatesInSheet.length}
                   </p>
                 </div>
               </div>
 
-              {/* Warning: Exceeds Quota */}
-              {quota > 0 && importResult.totalValid > quota && (
-                <div className="flex items-start gap-2.5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">Atenção: A planilha ultrapassa a cota contratual!</span>
-                    <p className="mt-0.5">
-                      Foram encontradas {importResult.totalValid} cortesias para uma cota definida de {quota}.
-                    </p>
+              {/* Comparativo de Cotas na Importação */}
+              {importBreakdown.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Layers className="h-3.5 w-3.5 text-primary" />
+                    Comparativo com as Cotas Contratadas:
+                  </p>
+                  <div className="rounded-lg border overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Setor</TableHead>
+                          <TableHead className="text-xs">Tipo de Ingresso</TableHead>
+                          <TableHead className="text-xs text-center">Na Planilha</TableHead>
+                          <TableHead className="text-xs text-center">Cota Contratada</TableHead>
+                          <TableHead className="text-xs text-right">Situação</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {importBreakdown.map((item, idx) => (
+                          <TableRow key={idx}>
+                            <TableCell className="text-xs font-medium">{item.sector}</TableCell>
+                            <TableCell className="text-xs">{getTicketBadge(item.ticket_type)}</TableCell>
+                            <TableCell className="text-xs text-center font-bold tabular">
+                              {item.foundInSheet}
+                            </TableCell>
+                            <TableCell className="text-xs text-center text-muted-foreground tabular">
+                              {item.quota !== null ? item.quota : "Não definida"}
+                            </TableCell>
+                            <TableCell className="text-xs text-right">
+                              {item.status === "ok" && (
+                                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px]">
+                                  Dentro da cota
+                                </Badge>
+                              )}
+                              {item.status === "exceeded" && (
+                                <Badge variant="destructive" className="text-[10px]">
+                                  Excede cota (+{item.foundInSheet - (item.quota ?? 0)})
+                                </Badge>
+                              )}
+                              {item.status === "uncontracted" && (
+                                <Badge variant="outline" className="text-amber-600 border-amber-500/40 bg-amber-500/10 text-[10px]">
+                                  Fora da cota
+                                </Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               )}
 
-              {/* Warning: Duplicates in file */}
+              {/* Duplicates Alert */}
               {importResult.duplicatesInSheet.length > 0 && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />

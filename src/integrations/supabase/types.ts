@@ -426,6 +426,7 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           courtesy_quota: number | null
+          courtesy_quota_rules: Json | null
           created_at: string
           id: string
           name: string
@@ -442,6 +443,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           courtesy_quota?: number | null
+          courtesy_quota_rules?: Json | null
           created_at?: string
           id?: string
           name: string
@@ -458,6 +460,7 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           courtesy_quota?: number | null
+          courtesy_quota_rules?: Json | null
           created_at?: string
           id?: string
           name?: string

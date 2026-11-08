@@ -1,3 +1,12 @@
+import { CourtesyRow, CourtesyQuotaRule, ParseCourtesySheetResult } from "./courtesy-sheet";
+
+export interface CourtesyQuotaRule {
+  id: string;
+  sector: string;
+  ticket_type: "Passaporte" | "Sábado" | "Domingo" | "Sexta" | string;
+  quantity: number;
+}
+
 export interface CourtesyRow {
   id?: string;
   name: string;
@@ -5,13 +14,13 @@ export interface CourtesyRow {
   email: string;
   phone: string;
   sector: string;
-  ticket_type: "Passaporte" | "Sexta" | "Sábado" | string;
+  ticket_type: "Passaporte" | "Sábado" | "Domingo" | "Sexta" | string;
 }
 
 export interface ParseCourtesySheetResult {
   rows: CourtesyRow[];
   totalValid: number;
-  duplicatesInSheet: string[]; // CPFs with duplicates in file
+  duplicatesInSheet: string[];
   errors: string[];
 }
 
@@ -22,11 +31,12 @@ const norm = (s: string) =>
     .toLowerCase()
     .trim();
 
-export function normalizeTicketType(raw: string): "Passaporte" | "Sexta" | "Sábado" {
+export function normalizeTicketType(raw: string): "Passaporte" | "Sábado" | "Domingo" | "Sexta" | string {
   const n = norm(raw);
-  if (n.includes("passaporte") || n.includes("todos") || n.includes("combo")) return "Passaporte";
-  if (n.includes("sexta") || n.includes("29") || n.includes("sex")) return "Sexta";
+  if (n.includes("passaporte") || n.includes("todos") || n.includes("combo") || n.includes("2 dias")) return "Passaporte";
+  if (n.includes("domingo") || n.includes("31") || n.includes("dom")) return "Domingo";
   if (n.includes("sabado") || n.includes("30") || n.includes("sab")) return "Sábado";
+  if (n.includes("sexta") || n.includes("29") || n.includes("sex")) return "Sexta";
   return "Passaporte";
 }
 
@@ -99,34 +109,35 @@ export function parseCourtesyGrid(matrix: unknown[][]): ParseCourtesySheetResult
     if (!rawName && !rawCpf) continue;
 
     if (!rawName) {
-      errors.push(`Linha ${r + 1}: Nome não informado.`);
-      continue;
-    }
-    if (!rawCpf) {
-      errors.push(`Linha ${r + 1}: CPF de "${rawName}" não informado.`);
+      errors.push(`Linha ${r + 1}: Nome do beneficiário não preenchido.`);
       continue;
     }
 
-    const cleanedCpf = formatCpf(rawCpf);
-    const cpfKey = cleanedCpf.replace(/\D/g, "") || cleanedCpf;
+    const formattedCpf = formatCpf(rawCpf);
+    if (!formattedCpf || formattedCpf.replace(/\D/g, "").length !== 11) {
+      errors.push(`Linha ${r + 1} (${rawName}): CPF inválido ou incompleto (${rawCpf || "em branco"}).`);
+      continue;
+    }
 
-    if (seenCpf.has(cpfKey)) {
-      duplicatesInSheet.push(cleanedCpf);
+    // Check duplicate in same sheet
+    const cleanCpf = formattedCpf.replace(/\D/g, "");
+    if (seenCpf.has(cleanCpf)) {
+      duplicatesInSheet.push(formattedCpf);
     } else {
-      seenCpf.set(cpfKey, r + 1);
+      seenCpf.set(cleanCpf, r + 1);
     }
 
     const rawEmail = String(colMap["email"] !== undefined ? row[colMap["email"]] ?? "" : "").trim();
     const rawPhone = String(colMap["phone"] !== undefined ? row[colMap["phone"]] ?? "" : "").trim();
-    const rawSector = String(colMap["sector"] !== undefined ? row[colMap["sector"]] ?? "" : "").trim() || "Arena";
+    const rawSector = String(colMap["sector"] !== undefined ? row[colMap["sector"]] ?? "" : "").trim();
     const rawTicket = String(colMap["ticket_type"] !== undefined ? row[colMap["ticket_type"]] ?? "" : "").trim();
 
     rows.push({
       name: rawName,
-      cpf: cleanedCpf,
-      email: rawEmail,
-      phone: rawPhone,
-      sector: rawSector,
+      cpf: formattedCpf,
+      email: rawEmail || "",
+      phone: rawPhone || "",
+      sector: rawSector || "Arena",
       ticket_type: normalizeTicketType(rawTicket),
     });
   }
@@ -139,7 +150,7 @@ export function parseCourtesyGrid(matrix: unknown[][]): ParseCourtesySheetResult
   };
 }
 
-export async function downloadCourtesyTemplate() {
+export async function downloadCourtesyTemplate(rules?: CourtesyQuotaRule[], sponsorName?: string) {
   const { default: writeXlsxFile } = await import("write-excel-file/browser");
 
   const headers = [
@@ -151,41 +162,58 @@ export async function downloadCourtesyTemplate() {
     { value: "Tipo de Ingresso", fontWeight: "bold" as const },
   ];
 
-  const sampleRows = [
-    [
-      { type: String, value: "Mariana Silva" },
-      { type: String, value: "123.456.789-00" },
-      { type: String, value: "mariana.silva@empresa.com.br" },
-      { type: String, value: "(51) 99999-1111" },
-      { type: String, value: "Camarote" },
-      { type: String, value: "Passaporte" },
-    ],
-    [
-      { type: String, value: "Rodrigo Santos" },
-      { type: String, value: "234.567.890-11" },
-      { type: String, value: "rodrigo.santos@empresa.com.br" },
-      { type: String, value: "(51) 99999-2222" },
-      { type: String, value: "Premium" },
-      { type: String, value: "Sexta" },
-    ],
-    [
-      { type: String, value: "Fernanda Lima" },
-      { type: String, value: "345.678.901-22" },
-      { type: String, value: "fernanda.lima@empresa.com.br" },
-      { type: String, value: "(51) 99999-3333" },
-      { type: String, value: "Arena" },
-      { type: String, value: "Sábado" },
-    ],
-  ];
+  let sampleRows: any[][];
+
+  if (rules && rules.length > 0) {
+    sampleRows = rules.slice(0, 5).map((rule, idx) => [
+      { type: String, value: `Convidado Exemplo ${idx + 1}` },
+      { type: String, value: `123.456.789-0${idx}` },
+      { type: String, value: `convidado${idx + 1}@empresa.com.br` },
+      { type: String, value: "(51) 99999-0000" },
+      { type: String, value: rule.sector },
+      { type: String, value: rule.ticket_type },
+    ]);
+  } else {
+    sampleRows = [
+      [
+        { type: String, value: "Mariana Silva" },
+        { type: String, value: "123.456.789-00" },
+        { type: String, value: "mariana.silva@empresa.com.br" },
+        { type: String, value: "(51) 99999-1111" },
+        { type: String, value: "Camarote" },
+        { type: String, value: "Passaporte" },
+      ],
+      [
+        { type: String, value: "Rodrigo Santos" },
+        { type: String, value: "234.567.890-11" },
+        { type: String, value: "rodrigo.santos@empresa.com.br" },
+        { type: String, value: "(51) 99999-2222" },
+        { type: String, value: "Arena" },
+        { type: String, value: "Sábado" },
+      ],
+      [
+        { type: String, value: "Fernanda Lima" },
+        { type: String, value: "345.678.901-22" },
+        { type: String, value: "fernanda.lima@empresa.com.br" },
+        { type: String, value: "(51) 99999-3333" },
+        { type: String, value: "Arena" },
+        { type: String, value: "Domingo" },
+      ],
+    ];
+  }
+
+  const fileName = sponsorName
+    ? `modelo-cortesias-${sponsorName.toLowerCase().replace(/[^a-z0-9]/g, "-")}.xlsx`
+    : "modelo-cortesias-patrocinador.xlsx";
 
   await writeXlsxFile([headers, ...sampleRows], {
-    fileName: "modelo-cortesias-patrocinador.xlsx",
+    fileName,
     columns: [
       { width: 28 },
       { width: 18 },
       { width: 32 },
       { width: 20 },
-      { width: 16 },
+      { width: 18 },
       { width: 18 },
     ],
   });
@@ -220,7 +248,7 @@ export async function exportCourtesiesToExcel(rows: CourtesyRow[], sponsorName: 
       { width: 18 },
       { width: 32 },
       { width: 20 },
-      { width: 16 },
+      { width: 18 },
       { width: 18 },
     ],
   });
