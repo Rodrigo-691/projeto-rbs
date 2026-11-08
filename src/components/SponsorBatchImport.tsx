@@ -15,6 +15,7 @@ import {
 import { importSponsorsSpreadsheet, type SponsorBatchImportResult } from "@/lib/backend-api";
 import { supabase } from "@/integrations/supabase/client";
 import { QuotaTag } from "@/components/QuotaTag";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { type Quota } from "@/lib/portal";
 import {
@@ -56,6 +57,7 @@ export function SponsorBatchImport() {
   const [open, setOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<PreviewState | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [parsing, setParsing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SponsorBatchImportResult | null>(null);
@@ -63,10 +65,32 @@ export function SponsorBatchImport() {
   function resetState() {
     setSelectedFile(null);
     setPreview(null);
+    setSelectedRows(new Set());
     setResult(null);
     setLoading(false);
     setParsing(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function toggleRow(rowNumber: number) {
+    setSelectedRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(rowNumber)) {
+        next.delete(rowNumber);
+      } else {
+        next.add(rowNumber);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (!preview) return;
+    if (selectedRows.size === preview.valid.length) {
+      setSelectedRows(new Set());
+    } else {
+      setSelectedRows(new Set(preview.valid.map((i) => i.rowNumber)));
+    }
   }
 
   async function handleDownloadTemplate() {
@@ -240,6 +264,9 @@ export function SponsorBatchImport() {
         valid: validList,
         invalid: invalidList,
       });
+
+      // Marca todos os válidos por padrão
+      setSelectedRows(new Set(validList.map((i) => i.rowNumber)));
     } catch (err) {
       console.error("Erro ao analisar planilha:", err);
       toast.error("Não foi possível ler o arquivo. Certifique-se de que é um Excel .xlsx válido.");
@@ -249,71 +276,84 @@ export function SponsorBatchImport() {
   }
 
   async function handleConfirmImport() {
-    if (!selectedFile || !preview) return;
+    if (!preview) return;
+
+    const itemsToSave = preview.valid.filter((item) => selectedRows.has(item.rowNumber));
+
+    if (itemsToSave.length === 0) {
+      toast.error("Nenhum patrocinador selecionado com checkbox para cadastrar.");
+      return;
+    }
 
     setLoading(true);
     setResult(null);
 
-    // Tentativa 1: Backend Java (Spring Boot + Apache POI)
-    try {
-      const res = await importSponsorsSpreadsheet(selectedFile);
-      setResult(res);
+    // Se todos os válidos continuarem selecionados e não houver linhas desmarcadas, tenta enviar via arquivo ao Java
+    const allSelected = selectedRows.size === preview.valid.length && preview.invalid.length === 0;
 
-      if (res.successCount > 0) {
-        toast.success(`${res.successCount} patrocinador(es) cadastrado(s) com sucesso via Java (Apache POI)!`);
-        qc.invalidateQueries({ queryKey: ["sponsors"] });
-      }
-
-      if (res.errorCount > 0) {
-        toast.warning(`${res.errorCount} linha(s) com inconsistências não foram cadastradas.`);
-      }
-      return;
-    } catch (err: any) {
-      console.warn("Backend Java em fallback, gravando diretamente no Supabase:", err);
-
-      // Tentativa 2: Fallback direto no Supabase
+    if (allSelected && selectedFile) {
       try {
-        if (preview.valid.length === 0) {
-          throw new Error("Nenhum patrocinador válido para cadastrar.");
+        const res = await importSponsorsSpreadsheet(selectedFile);
+        setResult(res);
+
+        if (res.successCount > 0) {
+          toast.success(`${res.successCount} patrocinador(es) cadastrado(s) com sucesso via Java (Apache POI)!`);
+          qc.invalidateQueries({ queryKey: ["sponsors"] });
         }
 
-        const toInsert = preview.valid.map((item) => ({
-          name: item.name,
-          cnpj: item.cnpj,
-          quota: item.quota,
-          segment: item.segment,
-          contact_name: item.contactName,
-          contact_phone: item.contactPhone,
-          notes: "Importado em lote via planilha pelo administrador",
-        }));
-
-        const { error: insertErr } = await supabase.from("sponsors").insert(toInsert);
-        if (insertErr) throw insertErr;
-
-        toast.success(`${toInsert.length} patrocinador(es) cadastrado(s) com sucesso!`);
-        qc.invalidateQueries({ queryKey: ["sponsors"] });
-
-        setResult({
-          success: true,
-          totalRows: preview.valid.length + preview.invalid.length,
-          successCount: toInsert.length,
-          errorCount: preview.invalid.length,
-          createdSponsors: toInsert as any,
-          errors: preview.invalid.map((inv) => ({
-            rowNumber: inv.rowNumber,
-            sponsorName: inv.name,
-            cnpj: inv.cnpj,
-            errorMessage: inv.reason,
-          })),
-        });
-      } catch (fallbackErr: any) {
-        console.error("Falha no fallback:", fallbackErr);
-        toast.error(fallbackErr.message || err.message || "Erro ao cadastrar patrocinadores.");
+        if (res.errorCount > 0) {
+          toast.warning(`${res.errorCount} linha(s) com inconsistências não foram cadastradas.`);
+        }
+        setLoading(false);
+        return;
+      } catch (err) {
+        console.warn("Backend Java em fallback, prosseguindo com inserção dos itens selecionados:", err);
       }
+    }
+
+    // Inserção dos itens marcados com checkbox
+    try {
+      const toInsert = itemsToSave.map((item) => ({
+        name: item.name,
+        cnpj: item.cnpj,
+        quota: item.quota,
+        segment: item.segment,
+        contact_name: item.contactName,
+        contact_phone: item.contactPhone,
+        notes: "Importado em lote via planilha pelo administrador",
+      }));
+
+      const { error: insertErr } = await supabase.from("sponsors").insert(toInsert);
+      if (insertErr) throw insertErr;
+
+      toast.success(`${toInsert.length} patrocinador(es) selecionado(s) cadastrado(s) com sucesso!`);
+      qc.invalidateQueries({ queryKey: ["sponsors"] });
+
+      setResult({
+        success: true,
+        totalRows: itemsToSave.length + preview.invalid.length,
+        successCount: toInsert.length,
+        errorCount: preview.invalid.length,
+        createdSponsors: toInsert as any,
+        errors: preview.invalid.map((inv) => ({
+          rowNumber: inv.rowNumber,
+          sponsorName: inv.name,
+          cnpj: inv.cnpj,
+          errorMessage: inv.reason,
+        })),
+      });
+    } catch (err: any) {
+      console.error("Falha ao cadastrar selecionados:", err);
+      toast.error(err.message || "Erro ao cadastrar patrocinadores selecionados.");
     } finally {
       setLoading(false);
     }
   }
+
+  const isAllSelected =
+    preview && preview.valid.length > 0 && selectedRows.size === preview.valid.length;
+  const isSomeSelected =
+    selectedRows.size > 0 && preview && selectedRows.size < preview.valid.length;
 
   return (
     <Dialog
@@ -337,7 +377,7 @@ export function SponsorBatchImport() {
             Importar patrocinadores via planilha
           </DialogTitle>
           <DialogDescription>
-            Faça upload de uma planilha <strong>.xlsx</strong> para visualizar as marcas antes de confirmar o cadastro.
+            Faça upload de uma planilha <strong>.xlsx</strong> e marque os patrocinadores que deseja cadastrar.
           </DialogDescription>
         </DialogHeader>
 
@@ -400,14 +440,14 @@ export function SponsorBatchImport() {
                     {parsing ? "Lendo e validando planilha..." : "Clique para selecionar a planilha (.xlsx)"}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Os nomes e dados serão exibidos para conferência antes do cadastro
+                    Você poderá selecionar individualmente as marcas antes de confirmar
                   </span>
                 </label>
               </div>
             </>
           )}
 
-          {/* Modo de PRÉ-VISUALIZAÇÃO (Antes de importar) */}
+          {/* Modo de PRÉ-VISUALIZAÇÃO COM CHECKBOXES */}
           {preview && !result && (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-muted/40 px-4 py-3">
@@ -416,8 +456,8 @@ export function SponsorBatchImport() {
                   <div>
                     <p className="text-sm font-semibold text-foreground">{preview.fileName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {preview.valid.length} patrocinador(es) pronto(s) para cadastro
-                      {preview.invalid.length > 0 && ` • ${preview.invalid.length} linha(s) com inconsistência`}
+                      <strong>{selectedRows.size}</strong> de {preview.valid.length} marca(s) selecionada(s) para inclusão
+                      {preview.invalid.length > 0 && ` • ${preview.invalid.length} com inconsistência`}
                     </p>
                   </div>
                 </div>
@@ -434,19 +474,33 @@ export function SponsorBatchImport() {
                 </Button>
               </div>
 
-              {/* Tabela de Patrocinadores que serão importados */}
+              {/* Tabela de Patrocinadores com Checkboxes */}
               {preview.valid.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Patrocinadores encontrados para cadastro ({preview.valid.length}):
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold uppercase tracking-wider text-muted-foreground">
+                      Selecione as marcas que deseja cadastrar ({selectedRows.size}/{preview.valid.length}):
                     </span>
+                    <button
+                      type="button"
+                      onClick={toggleSelectAll}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      {selectedRows.size === preview.valid.length ? "Desmarcar todos" : "Selecionar todos"}
+                    </button>
                   </div>
 
                   <div className="max-h-64 overflow-y-auto rounded-lg border bg-background">
                     <table className="w-full text-left text-xs">
                       <thead className="sticky top-0 border-b bg-muted/70 font-semibold text-muted-foreground">
                         <tr>
+                          <th className="w-10 px-3 py-2.5 text-center">
+                            <Checkbox
+                              checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+                              onCheckedChange={toggleSelectAll}
+                              aria-label="Selecionar todas as marcas"
+                            />
+                          </th>
                           <th className="px-3 py-2.5">Linha</th>
                           <th className="px-3 py-2.5">Marca / Nome</th>
                           <th className="px-3 py-2.5">CNPJ</th>
@@ -456,25 +510,43 @@ export function SponsorBatchImport() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {preview.valid.map((item) => (
-                          <tr key={item.rowNumber} className="hover:bg-muted/30">
-                            <td className="px-3 py-2 font-mono text-muted-foreground">#{item.rowNumber}</td>
-                            <td className="px-3 py-2 font-semibold text-foreground">
-                              <div className="flex items-center gap-1.5">
-                                <Building2 className="text-muted-foreground h-3.5 w-3.5" />
-                                {item.name}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 font-mono text-muted-foreground">{item.cnpj}</td>
-                            <td className="px-3 py-2">
-                              <QuotaTag quota={item.quota} />
-                            </td>
-                            <td className="px-3 py-2 text-muted-foreground">{item.segment || "—"}</td>
-                            <td className="px-3 py-2 text-muted-foreground">
-                              {item.contactName ? `${item.contactName} ${item.contactPhone ? `(${item.contactPhone})` : ""}` : "—"}
-                            </td>
-                          </tr>
-                        ))}
+                        {preview.valid.map((item) => {
+                          const isChecked = selectedRows.has(item.rowNumber);
+                          return (
+                            <tr
+                              key={item.rowNumber}
+                              onClick={() => toggleRow(item.rowNumber)}
+                              className={`cursor-pointer transition-colors ${
+                                isChecked ? "bg-primary/5 hover:bg-primary/10" : "opacity-60 hover:bg-muted/40"
+                              }`}
+                            >
+                              <td className="w-10 px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={() => toggleRow(item.rowNumber)}
+                                  aria-label={`Selecionar ${item.name}`}
+                                />
+                              </td>
+                              <td className="px-3 py-2 font-mono text-muted-foreground">#{item.rowNumber}</td>
+                              <td className="px-3 py-2 font-semibold text-foreground">
+                                <div className="flex items-center gap-1.5">
+                                  <Building2 className="text-muted-foreground h-3.5 w-3.5" />
+                                  <span className={isChecked ? "font-semibold" : "line-through text-muted-foreground"}>
+                                    {item.name}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-2 font-mono text-muted-foreground">{item.cnpj}</td>
+                              <td className="px-3 py-2">
+                                <QuotaTag quota={item.quota} />
+                              </td>
+                              <td className="px-3 py-2 text-muted-foreground">{item.segment || "—"}</td>
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {item.contactName ? `${item.contactName} ${item.contactPhone ? `(${item.contactPhone})` : ""}` : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -586,7 +658,7 @@ export function SponsorBatchImport() {
           {preview && !result && (
             <Button
               type="button"
-              disabled={loading || preview.valid.length === 0}
+              disabled={loading || selectedRows.size === 0}
               onClick={handleConfirmImport}
               className="gap-2"
             >
@@ -598,7 +670,7 @@ export function SponsorBatchImport() {
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Confirmar e cadastrar {preview.valid.length} marca(s)
+                  Confirmar e cadastrar {selectedRows.size} marca(s) selecionada(s)
                 </>
               )}
             </Button>
