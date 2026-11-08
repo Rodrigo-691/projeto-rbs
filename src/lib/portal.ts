@@ -110,6 +110,9 @@ export function formatBytes(n: number) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function formatDate(d: string) {
-  return new Date(d).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+export function formatDate(d?: string | null) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "—";
+  return date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }

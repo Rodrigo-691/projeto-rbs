@@ -15,12 +15,14 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Ticket,
   UserPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, NavButton, NavGroup, NavItem } from "@/components/AppShell";
 import { PageHeader, Panel, PanelList, PanelNote } from "@/components/Panel";
 import { QuotaTag } from "@/components/QuotaTag";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -46,6 +48,7 @@ type Row = {
   name: string;
   quota: Quota;
   segment: string | null;
+  courtesy_quota?: number | null;
   sponsor_members: { count: number }[];
   sponsor_files: { count: number }[];
   media_items: { count: number }[];
@@ -65,6 +68,7 @@ function Painel() {
             name: s.name,
             quota: (s.quota ? String(s.quota).toLowerCase() : "subcota") as Quota,
             segment: s.segment ?? null,
+            courtesy_quota: s.courtesyQuota ?? 0,
             sponsor_members: [{ count: s.membersCount ?? 0 }],
             sponsor_files: [{ count: s.filesCount ?? 0 }],
             media_items: [{ count: s.mediaCount ?? 0 }],
@@ -75,10 +79,10 @@ function Painel() {
       }
       const { data, error } = await supabase
         .from("sponsors")
-        .select("id,name,quota,segment,sponsor_members(count),sponsor_files(count),media_items(count)")
+        .select("id,name,quota,segment,courtesy_quota,sponsor_members(count),sponsor_files(count),media_items(count)")
         .order("name");
       if (error) throw error;
-      return data;
+      return (data ?? []) as Row[];
     },
   });
 
@@ -217,47 +221,162 @@ function AdminOverview({
   list: Row[];
   onGoToSponsors: () => void;
 }) {
+  const [filterPending, setFilterPending] = useState<"all" | "members" | "courtesies" | "contract">("all");
+
   const auditQuery = useQuery({
     queryKey: ["admin_recent_audit"],
     queryFn: async () => {
       try {
-        const javaData = await fetchSponsorsFromBackend();
-        if (Array.isArray(javaData)) {
-          return javaData.map((s: any) => ({
-            id: s.id,
-            name: s.name,
-            quota: (s.quota ? String(s.quota).toLowerCase() : "subcota") as Quota,
-            segment: s.segment ?? null,
-            sponsor_members: [{ count: s.membersCount ?? 0 }],
-            sponsor_files: [{ count: s.filesCount ?? 0 }],
-            media_items: [{ count: s.mediaCount ?? 0 }],
-          }));
+        const { data, error } = await supabase
+          .from("audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(8);
+        if (error) {
+          console.warn("Failed to fetch audit log:", error);
+          return [];
         }
+        return data ?? [];
       } catch (err) {
-        console.warn("Backend Java indisponível ou em fallback, consultando Supabase diretamente:", err);
+        console.warn("Failed to fetch audit log:", err);
+        return [];
       }
-      const { data, error } = await supabase
-        .from("audit_log")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(8);
-      if (error) throw error;
-      return data ?? [];
+    },
+  });
+
+  const mediaQuery = useQuery({
+    queryKey: ["admin_overview_media"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("media_items")
+          .select("id,reach,channel");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch media overview:", err);
+        return [];
+      }
+    },
+  });
+
+  const courtesiesQuery = useQuery({
+    queryKey: ["admin_overview_courtesies"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("sponsor_courtesies")
+          .select("id,sponsor_id");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch courtesies overview:", err);
+        return [];
+      }
+    },
+  });
+
+  const contractsQuery = useQuery({
+    queryKey: ["admin_overview_contracts"],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("sponsor_files")
+          .select("sponsor_id")
+          .eq("tab", "contrato");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch contracts overview:", err);
+        return [];
+      }
     },
   });
 
   const sponsorMap = new Map(list.map((s) => [s.id, s.name]));
 
-  const counts = (q: Quota) => list.filter((s) => s.quota === q).length;
-  const totalFiles = list.reduce((acc, s) => acc + (s.sponsor_files[0]?.count ?? 0), 0);
-  const totalMedia = list.reduce((acc, s) => acc + (s.media_items[0]?.count ?? 0), 0);
-  const sponsorsWithMembers = list.filter((s) => (s.sponsor_members[0]?.count ?? 0) > 0).length;
-  const sponsorsWithoutMembers = list.filter((s) => (s.sponsor_members[0]?.count ?? 0) === 0);
+  // Media calculations
+  const totalReach = (mediaQuery.data ?? []).reduce((acc, m) => acc + (m.reach || 0), 0);
+  const totalMedia = (mediaQuery.data ?? []).length;
 
+  // Courtesies calculations
+  const courtesiesList = courtesiesQuery.data ?? [];
+  const totalCourtesies = courtesiesList.length;
+  const totalCourtesyQuota = list.reduce((acc, s) => acc + (s.courtesy_quota ?? 0), 0);
+
+  // Courtesies map by sponsor
+  const courtesiesBySponsor = new Map<string, number>();
+  for (const c of courtesiesList) {
+    courtesiesBySponsor.set(c.sponsor_id, (courtesiesBySponsor.get(c.sponsor_id) ?? 0) + 1);
+  }
+
+  // Contracts set
+  const contractsSet = new Set((contractsQuery.data ?? []).map((f) => f.sponsor_id));
+
+  // Quota breakdown
+  const counts = (q: Quota) => list.filter((s) => s.quota === q).length;
+
+  // Days remaining
   const daysRemaining = Math.max(
     0,
     Math.ceil((new Date("2027-01-29T18:00:00-03:00").getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
   );
+
+  // Pending sponsors analysis
+  const pendingSponsors = list
+    .map((s) => {
+      const issues: {
+        type: "members" | "courtesies" | "contract";
+        label: string;
+        targetTab: "perfil" | "cortesias" | "contrato";
+      }[] = [];
+
+      // 1. Members
+      if ((s.sponsor_members[0]?.count ?? 0) === 0) {
+        issues.push({
+          type: "members",
+          label: "Sem membros convidados",
+          targetTab: "perfil",
+        });
+      }
+
+      // 2. Courtesies
+      const hasUploadedCourtesies = (courtesiesBySponsor.get(s.id) ?? 0) > 0;
+      if ((s.courtesy_quota ?? 0) > 0 && !hasUploadedCourtesies) {
+        issues.push({
+          type: "courtesies",
+          label: `Cota (${s.courtesy_quota}) sem lista enviada`,
+          targetTab: "cortesias",
+        });
+      }
+
+      // 3. Contract
+      if (!contractsSet.has(s.id)) {
+        issues.push({
+          type: "contract",
+          label: "Contrato não anexado",
+          targetTab: "contrato",
+        });
+      }
+
+      return { sponsor: s, issues };
+    })
+    .filter((item) => item.issues.length > 0);
+
+  const filteredPending = pendingSponsors
+    .map((item) => ({
+      sponsor: item.sponsor,
+      issues: filterPending === "all" ? item.issues : item.issues.filter((i) => i.type === filterPending),
+    }))
+    .filter((item) => item.issues.length > 0);
+
+  // Format Reach
+  const formattedReach =
+    totalReach >= 1_000_000
+      ? `${(totalReach / 1_000_000).toFixed(1)}M`
+      : totalReach >= 1_000
+        ? `${(totalReach / 1_000).toFixed(0)}k`
+        : totalReach.toLocaleString("pt-BR");
 
   return (
     <div className="space-y-6">
@@ -312,8 +431,9 @@ function AdminOverview({
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards: Abordagem A (Impacto Consolidado + Operação) */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {/* Card 1: Total de Patrocinadores */}
         <div className="rounded-xl border bg-card p-4">
           <span className="text-muted-foreground text-xs font-medium">Total de Patrocinadores</span>
           <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">{list.length}</p>
@@ -322,69 +442,150 @@ function AdminOverview({
           </p>
         </div>
 
+        {/* Card 2: Alcance Total Consolidado */}
         <div className="rounded-xl border bg-card p-4">
-          <span className="text-muted-foreground text-xs font-medium">Marcas com Acesso</span>
+          <span className="text-muted-foreground text-xs font-medium">Alcance Consolidado</span>
           <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">
-            {sponsorsWithMembers} <span className="text-muted-foreground text-base font-normal">/ {list.length}</span>
+            {mediaQuery.isPending ? "..." : formattedReach}
           </p>
-          <p className="text-muted-foreground mt-0.5 text-xs">
-            {sponsorsWithoutMembers.length > 0 ? `${sponsorsWithoutMembers.length} sem membro convidado` : "Todas com acesso"}
-          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs truncate">Impacto nos canais RBS</p>
         </div>
 
-        <div className="rounded-xl border bg-card p-4">
-          <span className="text-muted-foreground text-xs font-medium">Arquivos no Portal</span>
-          <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">{totalFiles}</p>
-          <p className="text-muted-foreground mt-0.5 text-xs">MIV, planos e contratos</p>
-        </div>
-
+        {/* Card 3: Inserções de Mídia Realizadas */}
         <div className="rounded-xl border bg-card p-4">
           <span className="text-muted-foreground text-xs font-medium">Inserções de Mídia</span>
-          <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">{totalMedia}</p>
-          <p className="text-muted-foreground mt-0.5 text-xs">Veiculações registradas</p>
+          <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {mediaQuery.isPending ? "..." : totalMedia}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs truncate">Veiculações registradas</p>
+        </div>
+
+        {/* Card 4: Cortesias do Festival */}
+        <div className="rounded-xl border bg-card p-4">
+          <span className="text-muted-foreground text-xs font-medium">Cortesias do Festival</span>
+          <p className="tabular mt-2 text-2xl font-bold tracking-tight text-foreground">
+            {courtesiesQuery.isPending ? "..." : totalCourtesies}
+            {totalCourtesyQuota > 0 && (
+              <span className="text-muted-foreground text-base font-normal"> / {totalCourtesyQuota}</span>
+            )}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs truncate">
+            {totalCourtesyQuota > 0 ? "Alocadas vs. Cota geral" : "Ingressos alocados"}
+          </p>
         </div>
       </div>
 
       {/* Attention / Pending Actions Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Pending Sponsor Onboarding */}
+        {/* Bloco Central: Opção 1 (Central de Pendências & Alertas B2B) */}
         <Panel
           flush
-          title="Atenção B2B: Marcas sem membros"
-          description="Patrocinadores que ainda não possuem e-mails de acesso convidados."
+          title="Central de Pendências & Alertas B2B"
+          description="Itens operacionais prioritários que exigem acompanhamento do time RBS."
+          actions={
+            <div className="flex items-center gap-1">
+              <Button
+                variant={filterPending === "all" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setFilterPending("all")}
+                className="h-7 px-2 text-xs"
+              >
+                Todas ({pendingSponsors.length})
+              </Button>
+              <Button
+                variant={filterPending === "members" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setFilterPending("members")}
+                className="h-7 px-2 text-xs"
+              >
+                Membros
+              </Button>
+              <Button
+                variant={filterPending === "courtesies" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setFilterPending("courtesies")}
+                className="h-7 px-2 text-xs"
+              >
+                Cortesias
+              </Button>
+              <Button
+                variant={filterPending === "contract" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setFilterPending("contract")}
+                className="h-7 px-2 text-xs"
+              >
+                Contrato
+              </Button>
+            </div>
+          }
         >
-          {sponsorsWithoutMembers.length === 0 ? (
+          {filteredPending.length === 0 ? (
             <div className="flex items-center gap-2.5 p-5 text-sm text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-4 w-4 shrink-0" />
-              <span>Excelente! Todas as marcas possuem pelo menos um membro com acesso.</span>
+              <span>
+                {filterPending === "all"
+                  ? "Excelente! Nenhuma pendência crítica para as marcas cadastradas."
+                  : "Nenhuma pendência encontrada nesta categoria."}
+              </span>
             </div>
           ) : (
-            <ul className="divide-y border-t">
-              {sponsorsWithoutMembers.slice(0, 5).map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold">{s.name}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {s.segment || "Sem segmento"} · {QUOTA_LABEL[s.quota]}
-                    </p>
-                  </div>
-                  <Button asChild size="sm" variant="outline" className="shrink-0 text-xs">
-                    <Link to="/patrocinador/$id/perfil" params={{ id: s.id }}>
-                      Convidar membros
-                    </Link>
-                  </Button>
-                </li>
-              ))}
-              {sponsorsWithoutMembers.length > 5 && (
-                <li className="px-5 py-2 text-center text-xs text-muted-foreground">
-                  +{sponsorsWithoutMembers.length - 5} outras marcas sem membros
-                </li>
-              )}
+            <ul className="divide-y border-t max-h-96 overflow-y-auto">
+              {filteredPending.map(({ sponsor: s, issues }) => {
+                const primaryIssue = issues[0];
+                return (
+                  <li key={s.id} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between px-5 py-3 text-sm">
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate font-semibold text-foreground">{s.name}</p>
+                        <QuotaTag quota={s.quota} />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {issues.map((issue) => (
+                          <Badge
+                            key={issue.type}
+                            variant="outline"
+                            className={cn(
+                              "text-[10px] px-1.5 py-0 font-normal",
+                              issue.type === "members"
+                                ? "border-destructive/40 text-destructive bg-destructive/5"
+                                : issue.type === "courtesies"
+                                ? "border-purple-500/40 text-purple-700 dark:text-purple-300 bg-purple-500/5"
+                                : "border-amber-500/40 text-amber-700 dark:text-amber-300 bg-amber-500/5"
+                            )}
+                          >
+                            {issue.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                    {primaryIssue && (
+                      <Button asChild size="sm" variant="outline" className="shrink-0 self-start sm:self-center text-xs h-7">
+                        {primaryIssue.targetTab === "cortesias" ? (
+                          <Link to="/patrocinador/$id/cortesias" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        ) : primaryIssue.targetTab === "contrato" ? (
+                          <Link to="/patrocinador/$id/contrato" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <Link to="/patrocinador/$id/perfil" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        )}
+                      </Button>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </Panel>
 
-        {/* Recent Audit Activities */}
+        {/* Recent Audit Activities (MANTIDO CONFORME PEDIDO) */}
         <Panel
           flush
           title="Últimas movimentações no portal"
@@ -395,7 +596,7 @@ function AdminOverview({
           ) : (auditQuery.data?.length ?? 0) === 0 ? (
             <p className="text-muted-foreground p-5 text-sm">Nenhuma atividade registrada.</p>
           ) : (
-            <ul className="divide-y border-t">
+            <ul className="divide-y border-t max-h-96 overflow-y-auto">
               {auditQuery.data?.map((a) => {
                 const sponsorName = a.sponsor_id ? sponsorMap.get(a.sponsor_id) : null;
                 return (
@@ -433,7 +634,6 @@ function AdminSponsorsSection({ list }: { list: Row[] }) {
         description="Gerencie marcas parceiras, cotas comerciais, entregas de mídia e contratos do Planeta Atlântida."
         actions={
           <div className="flex items-center gap-2">
-            <SponsorBatchImport />
             <SponsorBatchImport />
             <NewSponsor />
           </div>

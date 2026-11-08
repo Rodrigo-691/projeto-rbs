@@ -10,6 +10,7 @@ export function Panel({
   title,
   description,
   actions,
+  action,
   children,
   flush = false,
   className,
@@ -18,12 +19,14 @@ export function Panel({
   title?: ReactNode;
   description?: ReactNode;
   actions?: ReactNode;
+  action?: ReactNode;
   children?: ReactNode;
   flush?: boolean;
   className?: string;
   bodyClassName?: string;
 }) {
-  const hasHeader = title || description || actions;
+  const headerActions = actions ?? action;
+  const hasHeader = title || description || headerActions;
   return (
     <section className={cn("bg-card rounded-lg border", className)}>
       {hasHeader && (
@@ -32,7 +35,7 @@ export function Panel({
             {title && <h2 className="text-base font-semibold">{title}</h2>}
             {description && <p className="text-muted-foreground mt-0.5 text-sm leading-relaxed">{description}</p>}
           </div>
-          {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+          {headerActions && <div className="flex shrink-0 flex-wrap items-center gap-2">{headerActions}</div>}
         </header>
       )}
       <div className={cn(flush ? "" : "px-5 pb-5", !hasHeader && !flush && "pt-5", bodyClassName)}>{children}</div>

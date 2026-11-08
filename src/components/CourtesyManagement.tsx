@@ -279,7 +279,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
       <Panel
         title="Gestão de Ingressos de Cortesia"
         description="Acompanhamento e envio nominal dos convidados contemplados pela cota da marca."
-        action={
+        actions={
           <div className="flex flex-wrap items-center gap-2">
             <Button
               variant="outline"
@@ -418,7 +418,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         flush
         title="Beneficiários das Cortesias"
         description="Lista consolidada de pessoas que receberão os ingressos da marca."
-        action={
+        actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative min-w-[200px]">
               <Search className="text-muted-foreground absolute left-2.5 top-2.5 h-3.5 w-3.5" />
@@ -442,11 +442,20 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
             <h3 className="text-sm font-semibold text-foreground">Nenhuma cortesia registrada ainda</h3>
             <p className="text-muted-foreground text-xs max-w-md mx-auto mt-1">
               {isAdmin
-                ? "Faça upload da planilha padronizada com a lista de beneficiários (Nome, CPF, E-mail, Telefone, Setor e Ingresso)."
+                ? "Faça download do modelo oficial abaixo, preencha os convidados e suba a planilha preenchida."
                 : "A equipe RBS ainda não disponibilizou a lista de cortesias desta marca no portal."}
             </p>
-            {isAdmin && (
-              <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => downloadCourtesyTemplate()}
+                className="text-xs"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Baixar modelo (.xlsx)
+              </Button>
+              {isAdmin && (
                 <Button
                   size="sm"
                   onClick={() => fileInputRef.current?.click()}
@@ -455,8 +464,8 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                   <Upload className="mr-1.5 h-3.5 w-3.5" />
                   Importar planilha agora
                 </Button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
