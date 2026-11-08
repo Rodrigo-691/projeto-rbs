@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   AlertCircle,
+  AlertTriangle,
   Building2,
   CheckCircle2,
   Download,
@@ -28,22 +29,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
-interface PreviewItem {
-  rowNumber: number;
-  name: string;
-  cnpj: string;
-  quota: Quota;
-  segment?: string | null;
-  contactName?: string | null;
-  contactPhone?: string | null;
-}
+import {
+  parseSponsorSheet,
+  type ParsedSponsorItem,
+  type ParsedSponsorError,
+} from "@/lib/sponsor-sheet";
 
-interface PreviewError {
-  rowNumber: number;
-  name: string;
-  cnpj: string;
-  reason: string;
-}
+type PreviewItem = ParsedSponsorItem;
+type PreviewError = ParsedSponsorError;
 
 interface PreviewState {
   fileName: string;
@@ -174,99 +167,40 @@ export function SponsorBatchImport() {
         return;
       }
 
-      const headerRow = rows[0].map((h) =>
-        String(h || "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .trim()
-      );
+      // Carrega patrocinadores existentes no banco para checagem dupla de duplicidade
+      let dbSponsors: { id: string; name: string; cnpj: string | null }[] = [];
+      try {
+        const { data } = await supabase.from("sponsors").select("id, name, cnpj");
+        if (data) dbSponsors = data;
+      } catch (dbErr) {
+        console.warn("Não foi possível carregar patrocinadores cadastrados no banco:", dbErr);
+      }
 
-      const findCol = (terms: string[]) =>
-        headerRow.findIndex((h) => terms.some((t) => h.includes(t)));
+      const parsed = parseSponsorSheet(rows, dbSponsors);
 
-      const colNome = findCol(["nome", "marca", "razao"]);
-      const colCnpj = findCol(["cnpj", "documento"]);
-      const colCota = findCol(["cota", "categoria"]);
-      const colSegmento = findCol(["segmento", "ramo", "setor"]);
-      const colContato = findCol(["focal", "contato", "responsavel"]);
-      const colTelefone = findCol(["telefone", "whatsapp", "celular", "fone"]);
-
-      const missing: string[] = [];
-      if (colNome === -1) missing.push("Nome");
-      if (colCnpj === -1) missing.push("CNPJ");
-      if (colCota === -1) missing.push("Cota");
-
-      if (missing.length > 0) {
-        toast.error(`Colunas obrigatórias ausentes na planilha: ${missing.join(", ")}`);
+      if (parsed.missingHeaders && parsed.missingHeaders.length > 0) {
+        toast.error(`Colunas obrigatórias ausentes na planilha: ${parsed.missingHeaders.join(", ")}`);
         setParsing(false);
         return;
       }
 
-      const parseQuota = (raw: string): Quota | null => {
-        const clean = (raw || "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .toLowerCase()
-          .replace(/[\s\-_]/g, "");
-        if (clean === "master") return "master";
-        if (clean === "subcotag" || clean === "subcotagrande") return "subcota_g";
-        if (clean === "subcota") return "subcota";
-        return null;
-      };
-
-      const validList: PreviewItem[] = [];
-      const invalidList: PreviewError[] = [];
-
-      for (let i = 1; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row || row.every((c) => c === null || c === undefined || String(c).trim() === "")) continue;
-
-        const nome = row[colNome] ? String(row[colNome]).trim() : "";
-        const cnpj = row[colCnpj] ? String(row[colCnpj]).trim() : "";
-        const cotaRaw = row[colCota] ? String(row[colCota]).trim() : "";
-        const segmento = colSegmento !== -1 && row[colSegmento] ? String(row[colSegmento]).trim() : null;
-        const contato = colContato !== -1 && row[colContato] ? String(row[colContato]).trim() : null;
-        const telefone = colTelefone !== -1 && row[colTelefone] ? String(row[colTelefone]).trim() : null;
-
-        const lineErrors: string[] = [];
-        if (!nome) lineErrors.push("Campo obrigatório 'Nome' ausente.");
-        if (!cnpj) lineErrors.push("Campo obrigatório 'CNPJ' ausente.");
-        const quota = parseQuota(cotaRaw);
-        if (!cotaRaw) {
-          lineErrors.push("Campo obrigatório 'Cota' ausente.");
-        } else if (!quota) {
-          lineErrors.push(`Cota '${cotaRaw}' inválida. Use Master, Subcota G ou Subcota.`);
-        }
-
-        if (lineErrors.length > 0) {
-          invalidList.push({
-            rowNumber: i + 1,
-            name: nome || "(Não informado)",
-            cnpj: cnpj || "(Não informado)",
-            reason: lineErrors.join(" "),
-          });
-        } else if (quota) {
-          validList.push({
-            rowNumber: i + 1,
-            name: nome,
-            cnpj,
-            quota,
-            segment: segmento,
-            contactName: contato,
-            contactPhone: telefone,
-          });
-        }
-      }
-
       setPreview({
         fileName: file.name,
-        valid: validList,
-        invalid: invalidList,
+        valid: parsed.valid,
+        invalid: parsed.invalid,
       });
 
-      // Marca todos os válidos por padrão
-      setSelectedRows(new Set(validList.map((i) => i.rowNumber)));
+      // Marca por padrão APENAS os patrocinadores NÃO duplicados
+      const nonDuplicateRows = new Set(
+        parsed.valid.filter((item) => !item.isDuplicate).map((i) => i.rowNumber)
+      );
+      setSelectedRows(nonDuplicateRows);
+
+      if (parsed.totalDuplicatesCount > 0) {
+        toast.warning(
+          `${parsed.totalDuplicatesCount} marca(s) duplicada(s) foram identificadas e desmarcadas automaticamente.`
+        );
+      }
     } catch (err) {
       console.error("Erro ao analisar planilha:", err);
       toast.error("Não foi possível ler o arquivo. Certifique-se de que é um Excel .xlsx válido.");
@@ -474,20 +408,65 @@ export function SponsorBatchImport() {
                 </Button>
               </div>
 
+              {/* Alerta de Duplicidades */}
+              {(() => {
+                const dbDups = preview.valid.filter((i) => i.duplicateType === "database");
+                const sheetDups = preview.valid.filter((i) => i.duplicateType === "sheet");
+                const totalDups = dbDups.length + sheetDups.length;
+                if (totalDups === 0) return null;
+
+                return (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200">
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-semibold text-sm">
+                          Atenção: {totalDups} marca(s) com duplicidade identificada(s)
+                        </p>
+                        <p className="text-muted-foreground leading-relaxed">
+                          {dbDups.length > 0 && (
+                            <span>• <strong>{dbDups.length}</strong> já cadastrada(s) na plataforma. </span>
+                          )}
+                          {sheetDups.length > 0 && (
+                            <span>• <strong>{sheetDups.length}</strong> repetida(s) na própria planilha. </span>
+                          )}
+                          Elas foram <strong>desmarcadas automaticamente</strong> para proteger o cadastro.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Tabela de Patrocinadores com Checkboxes */}
               {preview.valid.length > 0 ? (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                     <span className="font-semibold uppercase tracking-wider text-muted-foreground">
                       Selecione as marcas que deseja cadastrar ({selectedRows.size}/{preview.valid.length}):
                     </span>
-                    <button
-                      type="button"
-                      onClick={toggleSelectAll}
-                      className="text-primary hover:underline font-medium"
-                    >
-                      {selectedRows.size === preview.valid.length ? "Desmarcar todos" : "Selecionar todos"}
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {preview.valid.some((i) => i.isDuplicate) && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedRows(
+                              new Set(preview.valid.filter((i) => !i.isDuplicate).map((i) => i.rowNumber))
+                            )
+                          }
+                          className="text-amber-600 dark:text-amber-400 hover:underline font-medium"
+                        >
+                          Manter apenas novos
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={toggleSelectAll}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        {selectedRows.size === preview.valid.length ? "Desmarcar todos" : "Selecionar todos"}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="max-h-64 overflow-y-auto rounded-lg border bg-background">
@@ -517,7 +496,13 @@ export function SponsorBatchImport() {
                               key={item.rowNumber}
                               onClick={() => toggleRow(item.rowNumber)}
                               className={`cursor-pointer transition-colors ${
-                                isChecked ? "bg-primary/5 hover:bg-primary/10" : "opacity-60 hover:bg-muted/40"
+                                item.isDuplicate
+                                  ? isChecked
+                                    ? "bg-amber-500/10 hover:bg-amber-500/15"
+                                    : "bg-amber-500/5 opacity-70 hover:opacity-90"
+                                  : isChecked
+                                  ? "bg-primary/5 hover:bg-primary/10"
+                                  : "opacity-60 hover:bg-muted/40"
                               }`}
                             >
                               <td className="w-10 px-3 py-2 text-center" onClick={(e) => e.stopPropagation()}>
@@ -528,12 +513,24 @@ export function SponsorBatchImport() {
                                 />
                               </td>
                               <td className="px-3 py-2 font-mono text-muted-foreground">#{item.rowNumber}</td>
-                              <td className="px-3 py-2 font-semibold text-foreground">
-                                <div className="flex items-center gap-1.5">
-                                  <Building2 className="text-muted-foreground h-3.5 w-3.5" />
-                                  <span className={isChecked ? "font-semibold" : "line-through text-muted-foreground"}>
-                                    {item.name}
-                                  </span>
+                              <td className="px-3 py-2">
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Building2 className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+                                    <span
+                                      className={`font-semibold text-foreground ${
+                                        !isChecked && !item.isDuplicate ? "line-through text-muted-foreground" : ""
+                                      }`}
+                                    >
+                                      {item.name}
+                                    </span>
+                                  </div>
+                                  {item.isDuplicate && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                                      <AlertTriangle className="h-3 w-3 shrink-0" />
+                                      {item.duplicateReason}
+                                    </span>
+                                  )}
                                 </div>
                               </td>
                               <td className="px-3 py-2 font-mono text-muted-foreground">{item.cnpj}</td>
