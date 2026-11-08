@@ -223,47 +223,67 @@ function AdminOverview({
   const auditQuery = useQuery({
     queryKey: ["admin_recent_audit"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("audit_log")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(8);
-      if (error) throw error;
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("audit_log")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(8);
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch audit log:", err);
+        return [];
+      }
     },
   });
 
   const mediaQuery = useQuery({
     queryKey: ["admin_overview_media"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("media_items")
-        .select("id,reach,channel");
-      if (error) throw error;
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("media_items")
+          .select("id,reach,channel");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch media overview:", err);
+        return [];
+      }
     },
   });
 
   const courtesiesQuery = useQuery({
     queryKey: ["admin_overview_courtesies"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sponsor_courtesies")
-        .select("id,sponsor_id");
-      if (error) throw error;
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("sponsor_courtesies")
+          .select("id,sponsor_id");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch courtesies overview:", err);
+        return [];
+      }
     },
   });
 
   const contractsQuery = useQuery({
     queryKey: ["admin_overview_contracts"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("sponsor_files")
-        .select("sponsor_id")
-        .eq("tab", "contrato");
-      if (error) throw error;
-      return data ?? [];
+      try {
+        const { data, error } = await supabase
+          .from("sponsor_files")
+          .select("sponsor_id")
+          .eq("tab", "contrato");
+        if (error) throw error;
+        return data ?? [];
+      } catch (err) {
+        console.warn("Failed to fetch contracts overview:", err);
+        return [];
+      }
     },
   });
 
@@ -299,14 +319,14 @@ function AdminOverview({
   // Calculate pending sponsors & issues
   const pendingSponsors = list
     .map((s) => {
-      const issues: { type: "members" | "courtesies" | "contract"; label: string; to: string }[] = [];
+      const issues: { type: "members" | "courtesies" | "contract"; label: string; targetTab: "perfil" | "cortesias" | "contrato" }[] = [];
 
       // 1. Members
       if ((s.sponsor_members[0]?.count ?? 0) === 0) {
         issues.push({
           type: "members",
           label: "Sem membros",
-          to: `/patrocinador/${s.id}/perfil`,
+          targetTab: "perfil",
         });
       }
 
@@ -317,13 +337,13 @@ function AdminOverview({
         issues.push({
           type: "courtesies",
           label: `Cortesias pendentes (${sCourtesies}/${sQuota})`,
-          to: `/patrocinador/${s.id}/cortesias`,
+          targetTab: "cortesias",
         });
       } else if (sQuota === 0 && sCourtesies === 0) {
         issues.push({
           type: "courtesies",
           label: "Cortesias zeradas",
-          to: `/patrocinador/${s.id}/cortesias`,
+          targetTab: "cortesias",
         });
       }
 
@@ -332,7 +352,7 @@ function AdminOverview({
         issues.push({
           type: "contract",
           label: "Sem contrato",
-          to: `/patrocinador/${s.id}/contrato`,
+          targetTab: "contrato",
         });
       }
 
@@ -540,10 +560,22 @@ function AdminOverview({
                     </div>
                     {primaryIssue && (
                       <Button asChild size="sm" variant="outline" className="shrink-0 self-start sm:self-center text-xs h-7">
-                        <Link to={primaryIssue.to}>
-                          Resolver
-                          <ArrowRight className="ml-1 h-3 w-3" />
-                        </Link>
+                        {primaryIssue.targetTab === "cortesias" ? (
+                          <Link to="/patrocinador/$id/cortesias" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        ) : primaryIssue.targetTab === "contrato" ? (
+                          <Link to="/patrocinador/$id/contrato" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <Link to="/patrocinador/$id/perfil" params={{ id: s.id }}>
+                            Resolver
+                            <ArrowRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        )}
                       </Button>
                     )}
                   </li>
