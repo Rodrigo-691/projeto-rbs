@@ -15,6 +15,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { QUOTA_LABEL, sponsorQuery, useMe, type Quota } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
+import { parseMediaTargets, serializeMediaTargets } from "@/lib/media-targets";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/perfil")({
   head: () => portalHead("Perfil do cliente", "Dados da marca, contatos e acessos do patrocinador do Planeta Atlântida."),
@@ -54,12 +55,15 @@ function ProfileForm({ id, isAdmin }: { id: string; isAdmin: boolean }) {
         segment: s.data.segment ?? "",
         contact_name: s.data.contact_name ?? "",
         contact_phone: s.data.contact_phone ?? "",
-        notes: s.data.notes ?? "",
+        notes: parseMediaTargets(s.data.notes).cleanNotes,
       });
   }, [s.data]);
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("sponsors").update(form).eq("id", id);
+      const { targets } = parseMediaTargets(s.data?.notes);
+      const serializedNotes = serializeMediaTargets(form.notes, targets);
+      const payload = { ...form, notes: serializedNotes };
+      const { error } = await supabase.from("sponsors").update(payload).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

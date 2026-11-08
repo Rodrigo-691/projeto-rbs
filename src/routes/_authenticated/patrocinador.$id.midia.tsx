@@ -16,6 +16,8 @@ import { ALLOWED_TYPES, BUCKET, MAX_FILE_MB, formatDate, useMe } from "@/lib/por
 import { canDeleteMedia, groupMaterialFiles, splitMediaItems, type MediaItem } from "@/lib/media";
 import { MaterialAttachment } from "@/components/MaterialAttachment";
 import { MaterialReplies } from "@/components/MaterialReplies";
+import { ContractMediaTargets } from "@/components/ContractMediaTargets";
+import { sponsorQuery } from "@/lib/portal";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/midia")({
   head: () => ({
@@ -39,6 +41,7 @@ function Midia() {
   const me = useMe();
   const isAdmin = !!me.data?.isAdmin;
   const qc = useQueryClient();
+  const sponsor = useQuery(sponsorQuery(id));
   const items = useQuery({
     queryKey: ["media", id],
     queryFn: async () => {
@@ -204,6 +207,7 @@ function Midia() {
 
   return (
     <TabGate id={id} tab="midia" title="Mídia e conteúdo" intro="Envie materiais e acompanhe o que foi veiculado. Os dados alimentam o relatório final.">
+      <ContractMediaTargets sponsorId={id} isAdmin={isAdmin} notes={sponsor.data?.notes} items={items.data ?? []} />
       <Panel
         title="Enviar material"
         description="Peças, textos e arquivos de campanha."

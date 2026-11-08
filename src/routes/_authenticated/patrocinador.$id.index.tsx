@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { QUOTA_LABEL, sponsorQuery, useMe, useSponsorTabAccess, type Quota } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
+import { parseMediaTargets } from "@/lib/media-targets";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/")({
   head: () => portalHead("Início", "Visão geral e status da parceria com o Planeta Atlântida."),
@@ -117,6 +118,21 @@ function SponsorOverview() {
   const membersInvited = members.length > 0;
 
   const totalReach = mediaItems.reduce((acc, curr) => acc + (curr.reach ?? 0), 0);
+  const { targets } = parseMediaTargets(s.notes);
+
+  const totalDeliverables = [
+    profileComplete,
+    access.allows("aplicacoes") ? brandUploaded : null,
+    access.allows("midia") ? hasMedia : null,
+    access.allows("contrato") ? contractUploaded : null,
+    membersInvited,
+  ].filter((x) => x !== null);
+
+  const completedDeliverables = totalDeliverables.filter(Boolean).length;
+  const totalPossibleDeliverables = totalDeliverables.length;
+  const progressPercent = totalPossibleDeliverables > 0
+    ? Math.round((completedDeliverables / totalPossibleDeliverables) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -164,20 +180,26 @@ function SponsorOverview() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div className="rounded-xl border bg-card p-4 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs font-medium">Cota contratada</span>
-            <Building2 className="text-muted-foreground h-4 w-4" />
+            <span className="text-muted-foreground text-xs font-medium">Alcance total de mídia</span>
+            <TrendingUp className="text-primary h-4 w-4" />
           </div>
-          <p className="mt-2 text-xl font-bold tracking-tight text-foreground">{QUOTA_LABEL[s.quota]}</p>
-          <p className="text-muted-foreground mt-0.5 text-xs">Cota oficial do festival</p>
+          <p className="tabular mt-2 text-xl font-bold tracking-tight text-foreground">
+            {totalReach > 0 ? totalReach.toLocaleString("pt-BR") : "0"}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-xs truncate">
+            {totalReach > 0 ? "Impacto consolidado nos canais RBS" : "Em planejamento pela RBS"}
+          </p>
         </div>
 
         <div className="rounded-xl border bg-card p-4 transition-colors">
           <div className="flex items-center justify-between">
-            <span className="text-muted-foreground text-xs font-medium">Arquivos no portal</span>
-            <FileText className="text-muted-foreground h-4 w-4" />
+            <span className="text-muted-foreground text-xs font-medium">Progresso das entregas</span>
+            <CheckCircle2 className="text-emerald-500 h-4 w-4" />
           </div>
-          <p className="tabular mt-2 text-xl font-bold tracking-tight text-foreground">{files.length}</p>
-          <p className="text-muted-foreground mt-0.5 text-xs">MIV, contratos e guias</p>
+          <p className="tabular mt-2 text-xl font-bold tracking-tight text-foreground">{progressPercent}%</p>
+          <p className="text-muted-foreground mt-0.5 text-xs truncate">
+            {completedDeliverables} de {totalPossibleDeliverables} etapas validadas
+          </p>
         </div>
 
         <div className="rounded-xl border bg-card p-4 transition-colors">
@@ -185,9 +207,17 @@ function SponsorOverview() {
             <span className="text-muted-foreground text-xs font-medium">Inserções de mídia</span>
             <Megaphone className="text-muted-foreground h-4 w-4" />
           </div>
-          <p className="tabular mt-2 text-xl font-bold tracking-tight text-foreground">{mediaItems.length}</p>
+          <p className="tabular mt-2 text-xl font-bold tracking-tight text-foreground">
+            {targets.minTotal > 0 ? `${mediaItems.length} / ${targets.minTotal}` : String(mediaItems.length)}
+          </p>
           <p className="text-muted-foreground mt-0.5 text-xs">
-            {totalReach > 0 ? `${totalReach.toLocaleString("pt-BR")} de alcance` : "Em planejamento"}
+            {targets.minTotal > 0
+              ? mediaItems.length >= targets.minTotal
+                ? `Meta atingida (${Math.round((mediaItems.length / targets.minTotal) * 100)}%)`
+                : `Faltam ${targets.minTotal - mediaItems.length} para a meta contratada`
+              : totalReach > 0
+              ? `${mediaItems.length} veiculações realizadas`
+              : "Em planejamento pela RBS"}
           </p>
         </div>
 
