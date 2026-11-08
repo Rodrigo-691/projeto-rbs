@@ -31,19 +31,20 @@ function AuthPage() {
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    const cleanEmail = email.trim().toLowerCase();
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (error) throw error;
         navigate({ to: "/painel" });
       } else if (mode === "signup") {
-        const { data: allowed } = await supabase.rpc("is_email_allowed", { _email: email });
+        const { data: allowed } = await supabase.rpc("is_email_allowed", { _email: cleanEmail });
         if (!allowed) {
           toast.error("Este e-mail não foi liberado pela RBS. Fale com o time B2B.");
           return;
         }
         const { error } = await supabase.auth.signUp({
-          email,
+          email: cleanEmail,
           password,
           options: { emailRedirectTo: window.location.origin + "/painel" },
         });
@@ -51,11 +52,11 @@ function AuthPage() {
         toast.success("Conta criada! Confirme pelo link enviado ao seu e-mail.");
         setMode("login");
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
           redirectTo: window.location.origin + "/reset-password",
         });
         if (error) throw error;
-        toast.success("Enviamos um link para redefinir a senha.");
+        toast.success("Enviamos um link de redefinição para o seu e-mail.");
         setMode("login");
       }
     } catch (err) {
