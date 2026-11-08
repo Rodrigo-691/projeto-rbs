@@ -3,13 +3,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toPng } from "html-to-image";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import { Calendar, Download, Printer } from "lucide-react";
+import { Calendar, Download, Printer, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader, Panel } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import { sponsorQuery } from "@/lib/portal";
 import { portalHead } from "@/lib/page-head";
+import { isGenderQuestion, isAgeQuestion } from "@/lib/survey-sheet";
 
 export const Route = createFileRoute("/_authenticated/patrocinador/$id/relatorio")({
   head: () => portalHead("Relatório da parceria", "Resultados de mídia e métricas da parceria com o Planeta Atlântida."),
@@ -157,25 +158,75 @@ function Relatorio() {
 
       {questions.length === 0 ? (
         <ChartCard title="Pesquisa da ativação">
-          <Empty />
+          <Empty message="Resultados da pesquisa da ativação e perfil do público ainda não foram cadastrados." />
         </ChartCard>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {questions.map(([q, rows]) => (
-            <ChartCard key={q} title={q}>
-              <ResponsiveContainer width="100%" height={240}>
-                <PieChart>
-                  <Pie data={rows} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} label={(e) => `${e.value}%`}>
-                    {rows.map((_, i) => (
-                      <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
-                </PieChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          ))}
+        <div className="space-y-6">
+          {/* Perguntas da Ativação da Marca */}
+          {(() => {
+            const brandQuestions = questions.filter(([q]) => !isGenderQuestion(q) && !isAgeQuestion(q));
+            if (brandQuestions.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="bg-primary/10 text-primary rounded px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                    Pesquisa da ativação — Perguntas da marca
+                  </span>
+                  <span className="text-xs text-muted-foreground">({brandQuestions.length} perguntas analisadas)</span>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {brandQuestions.map(([q, rows]) => (
+                    <ChartCard key={q} title={q} description="Distribuição percentual das respostas coletadas">
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={rows} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} label={(e) => `${e.value}%`}>
+                            {rows.map((_, i) => (
+                              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Legend />
+                          <Tooltip formatter={(v: number) => `${v}%`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </ChartCard>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Dados Demográficos: Gênero e Faixa Etária */}
+          {(() => {
+            const demographicQuestions = questions.filter(([q]) => isGenderQuestion(q) || isAgeQuestion(q));
+            if (demographicQuestions.length === 0) return null;
+            return (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span className="bg-secondary text-secondary-foreground rounded px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wider">
+                    Perfil dos Respondentes (Gênero e Faixa Etária)
+                  </span>
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {demographicQuestions.map(([q, rows]) => (
+                    <ChartCard key={q} title={q} description="Amostra demográfica do público participante">
+                      <ResponsiveContainer width="100%" height={240}>
+                        <PieChart>
+                          <Pie data={rows} dataKey="value" nameKey="name" innerRadius={50} outerRadius={85} label={(e) => `${e.value}%`}>
+                            {rows.map((_, i) => (
+                              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Legend />
+                          <Tooltip formatter={(v: number) => `${v}%`} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </ChartCard>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </>
