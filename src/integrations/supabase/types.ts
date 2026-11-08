@@ -255,6 +255,53 @@ export type Database = {
         }
         Relationships: []
       }
+      sponsor_courtesies: {
+        Row: {
+          cpf: string
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          sector: string
+          sponsor_id: string
+          ticket_type: string
+          updated_at: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          sector: string
+          sponsor_id: string
+          ticket_type: string
+          updated_at?: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          sector?: string
+          sponsor_id?: string
+          ticket_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sponsor_courtesies_sponsor_id_fkey"
+            columns: ["sponsor_id"]
+            isOneToOne: false
+            referencedRelation: "sponsors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sponsor_files: {
         Row: {
           category: string
@@ -378,6 +425,7 @@ export type Database = {
           cnpj: string | null
           contact_name: string | null
           contact_phone: string | null
+          courtesy_quota: number | null
           created_at: string
           id: string
           name: string
@@ -393,6 +441,7 @@ export type Database = {
           cnpj?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          courtesy_quota?: number | null
           created_at?: string
           id?: string
           name: string
@@ -408,6 +457,7 @@ export type Database = {
           cnpj?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          courtesy_quota?: number | null
           created_at?: string
           id?: string
           name?: string
