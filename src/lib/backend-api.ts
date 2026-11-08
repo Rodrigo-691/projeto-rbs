@@ -28,6 +28,22 @@ export interface MediaImportResult {
   errors: string[];
 }
 
+export interface SponsorRowError {
+  rowNumber: number;
+  sponsorName: string;
+  cnpj: string;
+  errorMessage: string;
+}
+
+export interface SponsorBatchImportResult {
+  success: boolean;
+  totalRows: number;
+  successCount: number;
+  errorCount: number;
+  createdSponsors: SponsorPayload[];
+  errors: SponsorRowError[];
+}
+
 /**
  * Retorna os headers de autenticação com o Bearer token do Supabase.
  */
@@ -55,7 +71,29 @@ export async function checkBackendHealth(): Promise<BackendHealth | null> {
 }
 
 /**
- * Envia uma planilha Excel (.xlsx) para importação e processamento via Apache POI no backend Java.
+ * Envia uma planilha Excel (.xlsx) com múltiplos patrocinadores para cadastro em lote via Apache POI no backend Java.
+ */
+export async function importSponsorsSpreadsheet(file: File): Promise<SponsorBatchImportResult> {
+  const headers = await getAuthHeaders();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_BASE}/sponsors/import-excel`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || `Falha ao importar planilha de patrocinadores (Status ${res.status})`);
+  }
+
+  return (await res.json()) as SponsorBatchImportResult;
+}
+
+/**
+ * Envia uma planilha Excel (.xlsx) de veiculações para processamento via Apache POI no backend Java.
  */
 export async function importMediaSpreadsheet(file: File): Promise<MediaImportResult> {
   const headers = await getAuthHeaders();

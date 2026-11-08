@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { formatDate, QUOTA_LABEL, useMe, type Quota } from "@/lib/portal";
 import { auditDescription } from "@/lib/audit";
 import { NewSponsor } from "@/components/NewSponsor";
+import { SponsorBatchImport } from "@/components/SponsorBatchImport";
 import { MediaSheetImport } from "@/components/MediaSheetImport";
 import { fetchSponsorsFromBackend } from "@/lib/backend-api";
 import { portalHead } from "@/lib/page-head";
@@ -265,6 +266,7 @@ function AdminOverview({
         description="Painel de controle executivo do Planeta Atlântida 2027. Acompanhe parceiros comerciais, entregas e atividades recentes."
         actions={
           <div className="flex items-center gap-2">
+            <SponsorBatchImport />
             <NewSponsor />
             <Button variant="outline" onClick={onGoToSponsors}>
               Ver marcas <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -429,7 +431,13 @@ function AdminSponsorsSection({ list }: { list: Row[] }) {
       <PageHeader
         title="Patrocinadores"
         description="Gerencie marcas parceiras, cotas comerciais, entregas de mídia e contratos do Planeta Atlântida."
-        actions={<NewSponsor />}
+        actions={
+          <div className="flex items-center gap-2">
+            <SponsorBatchImport />
+            <SponsorBatchImport />
+            <NewSponsor />
+          </div>
+        }
       />
 
       <div className="bg-card grid grid-cols-2 divide-x divide-y rounded-lg border sm:grid-cols-4 sm:divide-y-0">
