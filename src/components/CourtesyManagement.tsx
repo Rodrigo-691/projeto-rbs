@@ -57,14 +57,12 @@ interface CourtesyManagementProps {
 }
 
 const PRESET_SECTORS = [
-  "Camarote",
   "Arena",
-  "Premium",
-  "Área VIP",
-  "Lounge",
-  "Planeta Open Bar",
-  "Pista",
-  "Frontstage",
+  "Camarote",
+  "Planeta Premium",
+  "Rooftop Open Bar",
+  "Terraço Atlântida",
+  "Planeta Club",
 ];
 
 const PRESET_TICKETS = [
@@ -992,14 +990,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                         .filter((r) => r.id !== rule.id)
                         .map((r) => r.sector.trim().toLowerCase());
 
-                      const sectorsList = Array.from(
-                        new Set([
-                          ...PRESET_SECTORS,
-                          ...(rule.sector && !PRESET_SECTORS.some((s) => s.toLowerCase() === rule.sector.toLowerCase())
-                            ? [rule.sector]
-                            : []),
-                        ])
-                      );
+                      const sectorsList = PRESET_SECTORS;
 
                       return (
                         <NativeSelect
