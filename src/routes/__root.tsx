@@ -48,6 +48,14 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
       <div className="mx-auto w-full max-w-md">
         <h1 className="text-xl font-semibold">Esta página não carregou</h1>
         <p className="text-muted-foreground mt-1 text-sm">Algo deu errado. Tente novamente; se persistir, avise o time B2B da RBS.</p>
+        {error && (
+          <details className="mt-4 rounded-md border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+            <summary className="cursor-pointer font-medium hover:text-foreground">Detalhes técnicos do erro</summary>
+            <pre className="mt-2 whitespace-pre-wrap font-mono text-[11px] overflow-auto max-h-40">
+              {error instanceof Error ? `${error.name}: ${error.message}\n${error.stack || ""}` : String(error)}
+            </pre>
+          </details>
+        )}
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             onClick={() => {
