@@ -642,8 +642,8 @@ function AdminSponsorsSection({ list }: { list: Row[] }) {
 
       <div className="bg-card grid grid-cols-2 divide-x divide-y rounded-lg border sm:grid-cols-4 sm:divide-y-0">
         <Stat label="Patrocinadores" value={list.length} />
-        <Stat label="Master" value={counts("master")} highlight />
-        <Stat label="Subcota G" value={counts("subcota_g")} />
+        <Stat label="Master" value={counts("master")} variant="master" />
+        <Stat label="Subcota G" value={counts("subcota_g")} variant="subcota_g" />
         <Stat label="Subcota" value={counts("subcota")} />
       </div>
 
@@ -652,11 +652,27 @@ function AdminSponsorsSection({ list }: { list: Row[] }) {
   );
 }
 
-function Stat({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
+function Stat({
+  label,
+  value,
+  variant = "default",
+}: {
+  label: string;
+  value: number;
+  variant?: "default" | "master" | "subcota_g";
+}) {
   return (
     <div className="px-5 py-4">
       <p className="text-muted-foreground text-xs font-medium">{label}</p>
-      <p className={cn("tabular mt-1 text-2xl font-semibold tracking-tight", highlight && "text-highlight-ink")}>{value}</p>
+      <p
+        className={cn(
+          "tabular mt-1 text-2xl font-semibold tracking-tight",
+          variant === "master" && "text-highlight-ink",
+          variant === "subcota_g" && "text-orange-600 dark:text-orange-400"
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
