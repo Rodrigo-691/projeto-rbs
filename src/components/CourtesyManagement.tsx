@@ -62,7 +62,6 @@ const PRESET_SECTORS = [
   "Planeta Premium",
   "Rooftop Open Bar",
   "Terraço Atlântida",
-  "Planeta Club",
 ];
 
 const PRESET_TICKETS = [
