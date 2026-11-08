@@ -13,7 +13,6 @@ import {
   Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { FileSection } from "@/components/FileSection";
 import { Panel, PanelNote } from "@/components/Panel";
 import { TabGate } from "@/components/TabGate";
 import { Button } from "@/components/ui/button";
@@ -52,7 +51,6 @@ function Pesquisa() {
       <Questions id={id} isAdmin={isAdmin} />
       {isAdmin && <SurveyImportAndTemplate id={id} />}
       <Results id={id} isAdmin={isAdmin} />
-      <FileSection sponsorId={id} tab="pesquisa" category="resultado_pesquisa" title="Arquivo de resultados" description="Relatório completo enviado pela empresa de pesquisa." uploader="admin" />
     </TabGate>
   );
 }
