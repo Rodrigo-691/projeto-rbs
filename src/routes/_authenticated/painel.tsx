@@ -30,6 +30,7 @@ import { formatDate, QUOTA_LABEL, useMe, type Quota } from "@/lib/portal";
 import { auditDescription } from "@/lib/audit";
 import { NewSponsor } from "@/components/NewSponsor";
 import { MediaSheetImport } from "@/components/MediaSheetImport";
+import { fetchSponsorsFromBackend } from "@/lib/backend-api";
 import { portalHead } from "@/lib/page-head";
 
 export const Route = createFileRoute("/_authenticated/painel")({
@@ -55,6 +56,22 @@ function Painel() {
   const sponsors = useQuery({
     queryKey: ["sponsors"],
     queryFn: async () => {
+      try {
+        const javaData = await fetchSponsorsFromBackend();
+        if (Array.isArray(javaData)) {
+          return javaData.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            quota: (s.quota ? String(s.quota).toLowerCase() : "subcota") as Quota,
+            segment: s.segment ?? null,
+            sponsor_members: [{ count: s.membersCount ?? 0 }],
+            sponsor_files: [{ count: s.filesCount ?? 0 }],
+            media_items: [{ count: s.mediaCount ?? 0 }],
+          }));
+        }
+      } catch (err) {
+        console.warn("Backend Java indisponível ou em fallback, consultando Supabase diretamente:", err);
+      }
       const { data, error } = await supabase
         .from("sponsors")
         .select("id,name,quota,segment,sponsor_members(count),sponsor_files(count),media_items(count)")
@@ -202,6 +219,22 @@ function AdminOverview({
   const auditQuery = useQuery({
     queryKey: ["admin_recent_audit"],
     queryFn: async () => {
+      try {
+        const javaData = await fetchSponsorsFromBackend();
+        if (Array.isArray(javaData)) {
+          return javaData.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            quota: (s.quota ? String(s.quota).toLowerCase() : "subcota") as Quota,
+            segment: s.segment ?? null,
+            sponsor_members: [{ count: s.membersCount ?? 0 }],
+            sponsor_files: [{ count: s.filesCount ?? 0 }],
+            media_items: [{ count: s.mediaCount ?? 0 }],
+          }));
+        }
+      } catch (err) {
+        console.warn("Backend Java indisponível ou em fallback, consultando Supabase diretamente:", err);
+      }
       const { data, error } = await supabase
         .from("audit_log")
         .select("*")

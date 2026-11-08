@@ -1,0 +1,3 @@
+@echo off
+echo Iniciando Frontend Planeta Atlantida (Vite Dev Server)...
+call npm.cmd run dev

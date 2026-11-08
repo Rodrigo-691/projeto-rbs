@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
 import { parseMediaSheet, FIXED_HEADERS, type ParsedRow, type RowError } from "@/lib/media-sheet";
+import { importMediaSpreadsheet } from "@/lib/backend-api";
 
 type SponsorRef = { id: string; name: string; cnpj?: string | null };
 
@@ -13,7 +14,7 @@ type SponsorRef = { id: string; name: string; cnpj?: string | null };
 export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: SponsorRef[]; sponsorLabel?: string }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<{ ok: ParsedRow[]; errors: RowError[]; file: string } | null>(null);
+  const [preview, setPreview] = useState<{ ok: ParsedRow[]; errors: RowError[]; file: string; fileObj?: File } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function downloadTemplate() {
@@ -32,7 +33,7 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
     try {
       const { readSheet } = await import("read-excel-file/browser");
       const rows = await readSheet(file);
-      setPreview({ ...parseMediaSheet(rows as unknown[][], sponsors), file: file.name });
+      setPreview({ ...parseMediaSheet(rows as unknown[][], sponsors), file: file.name, fileObj: file });
     } catch {
       toast.error("Não foi possível ler a planilha. Envie um arquivo .xlsx.");
     }
@@ -41,6 +42,25 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
   async function confirm() {
     if (!preview?.ok.length) return;
     setBusy(true);
+    // Processamento robusto no Backend Java (Apache POI) com fallback automático
+    if (preview.fileObj) {
+      try {
+        const javaResult = await importMediaSpreadsheet(preview.fileObj);
+        if (javaResult.success && javaResult.rowsImported > 0) {
+          setBusy(false);
+          toast.success(`${javaResult.rowsImported} veiculações importadas com sucesso via Java (Apache POI)!`);
+          if (javaResult.warnings?.length) {
+            javaResult.warnings.forEach((w) => toast.warning(w));
+          }
+          setPreview(null);
+          qc.invalidateQueries();
+          return;
+        }
+      } catch (backendErr) {
+        console.warn("Backend Java indisponível ou em fallback, prosseguindo com insert direto:", backendErr);
+      }
+    }
+
     const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
     const { error } = await supabase.from("media_items").insert(
       preview.ok.map((r) => ({
