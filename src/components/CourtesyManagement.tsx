@@ -59,8 +59,10 @@ interface CourtesyManagementProps {
 const PRESET_SECTORS = [
   "Camarote",
   "Arena",
-  "Área VIP",
   "Premium",
+  "Área VIP",
+  "Lounge",
+  "Planeta Open Bar",
   "Pista",
   "Frontstage",
 ];
@@ -69,7 +71,6 @@ const PRESET_TICKETS = [
   { value: "Passaporte", label: "Passaporte (2 dias)" },
   { value: "Sábado", label: "Sábado" },
   { value: "Domingo", label: "Domingo" },
-  { value: "Sexta", label: "Sexta" },
 ];
 
 export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyManagementProps) {
@@ -266,11 +267,10 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         if (t === "Passaporte") acc.passaporte++;
         else if (t === "Sábado") acc.sabado++;
         else if (t === "Domingo") acc.domingo++;
-        else if (t === "Sexta") acc.sexta++;
         else acc.outros++;
         return acc;
       },
-      { passaporte: 0, sabado: 0, domingo: 0, sexta: 0, outros: 0 },
+      { passaporte: 0, sabado: 0, domingo: 0, outros: 0 },
     );
   }, [list]);
 
@@ -278,6 +278,14 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
   const updateQuotaRules = useMutation({
     mutationFn: async (rulesToSave: CourtesyQuotaRule[]) => {
       const validRules = rulesToSave.filter((r) => r.sector.trim() && Number(r.quantity) > 0);
+
+      // Garantir que os setores não se repitam
+      const sectors = validRules.map((r) => r.sector.trim().toLowerCase());
+      const uniqueSectors = new Set(sectors);
+      if (sectors.length !== uniqueSectors.size) {
+        throw new Error("Cada setor pode ter apenas uma cota contratada definida. Remova os setores duplicados.");
+      }
+
       const total = validRules.reduce((acc, r) => acc + Number(r.quantity), 0);
 
       const { error } = await supabase
@@ -408,6 +416,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         currentRules.map((r) => ({
           ...r,
           id: r.id || `rule-${Math.random().toString(36).substring(2, 9)}`,
+          ticket_type: r.ticket_type === "Sexta" ? "Passaporte" : r.ticket_type,
         }))
       );
     } else {
@@ -424,13 +433,23 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
   }
 
   function handleAddRule() {
+    const selectedSectors = rulesInput.map((r) => r.sector.trim().toLowerCase());
+    const nextAvailable = PRESET_SECTORS.find(
+      (s) => !selectedSectors.includes(s.trim().toLowerCase())
+    );
+
+    if (!nextAvailable) {
+      toast.info("Todos os setores disponíveis já foram adicionados às cotas.");
+      return;
+    }
+
     setRulesInput((prev) => [
       ...prev,
       {
         id: `rule-${Date.now()}-${prev.length + 1}`,
-        sector: "Arena",
-        ticket_type: "Sábado",
-        quantity: 5,
+        sector: nextAvailable,
+        ticket_type: "Passaporte",
+        quantity: 10,
       },
     ]);
   }
@@ -800,7 +819,6 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               <option value="Passaporte">Passaporte (2 dias)</option>
               <option value="Sábado">Sábado</option>
               <option value="Domingo">Domingo</option>
-              <option value="Sexta">Sexta</option>
             </NativeSelect>
 
             {currentRules.length > 0 && (
@@ -969,20 +987,40 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
                   {/* Setor */}
                   <div className="flex-1 w-full space-y-1">
                     <Label className="text-[11px] text-muted-foreground">Setor</Label>
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        placeholder="Ex: Camarote, Arena..."
-                        value={rule.sector}
-                        onChange={(e) => handleRuleChange(rule.id, "sector", e.target.value)}
-                        className="h-8 text-xs"
-                        list={`sectors-list-${rule.id}`}
-                      />
-                      <datalist id={`sectors-list-${rule.id}`}>
-                        {PRESET_SECTORS.map((s) => (
-                          <option key={s} value={s} />
-                        ))}
-                      </datalist>
-                    </div>
+                    {(() => {
+                      const otherSelectedSectors = rulesInput
+                        .filter((r) => r.id !== rule.id)
+                        .map((r) => r.sector.trim().toLowerCase());
+
+                      const sectorsList = Array.from(
+                        new Set([
+                          ...PRESET_SECTORS,
+                          ...(rule.sector && !PRESET_SECTORS.some((s) => s.toLowerCase() === rule.sector.toLowerCase())
+                            ? [rule.sector]
+                            : []),
+                        ])
+                      );
+
+                      return (
+                        <NativeSelect
+                          value={rule.sector}
+                          onChange={(e) => handleRuleChange(rule.id, "sector", e.target.value)}
+                          className="h-8 text-xs w-full"
+                        >
+                          <option value="" disabled>
+                            Selecione um setor...
+                          </option>
+                          {sectorsList.map((s) => {
+                            const isTaken = otherSelectedSectors.includes(s.trim().toLowerCase());
+                            return (
+                              <option key={s} value={s} disabled={isTaken}>
+                                {s} {isTaken ? "(já utilizado em outra cota)" : ""}
+                              </option>
+                            );
+                          })}
+                        </NativeSelect>
+                      );
+                    })()}
                   </div>
 
                   {/* Tipo de Ingresso */}
@@ -1040,10 +1078,13 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               variant="outline"
               size="sm"
               onClick={handleAddRule}
+              disabled={rulesInput.length >= PRESET_SECTORS.length}
               className="w-full text-xs border-dashed"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Adicionar outro setor ou tipo de ingresso
+              {rulesInput.length >= PRESET_SECTORS.length
+                ? "Todos os setores disponíveis já foram configurados"
+                : "Adicionar outro setor"}
             </Button>
 
             {/* Total Geral da Cota */}
