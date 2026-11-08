@@ -1,21 +1,31 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Download, FileSpreadsheet, Upload } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Download, FileSpreadsheet, Loader2, Upload } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { parseMediaSheet, FIXED_HEADERS, type ParsedRow, type RowError } from "@/lib/media-sheet";
-import { importMediaSpreadsheet } from "@/lib/backend-api";
 
 type SponsorRef = { id: string; name: string; cnpj?: string | null };
+
+interface PreviewData {
+  ok: ParsedRow[];
+  errors: RowError[];
+  duplicateBrands: string[];
+  file: string;
+  fileObj?: File;
+}
 
 // Admin-only import of the standardized RBS spreadsheet; each row becomes a publication in that sponsor's report.
 export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: SponsorRef[]; sponsorLabel?: string }) {
   const qc = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<{ ok: ParsedRow[]; errors: RowError[]; file: string; fileObj?: File } | null>(null);
+  const [preview, setPreview] = useState<PreviewData | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [reading, setReading] = useState(false);
 
   async function downloadTemplate() {
     const { default: writeXlsxFile } = await import("write-excel-file/browser");
@@ -30,40 +40,118 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
   }
 
   async function onFile(file: File) {
+    setReading(true);
     try {
       const { readSheet } = await import("read-excel-file/browser");
       const rows = await readSheet(file);
-      setPreview({ ...parseMediaSheet(rows as unknown[][], sponsors), file: file.name, fileObj: file });
+      const parsed = parseMediaSheet(rows as unknown[][], sponsors);
+
+      // Verificação contra veiculações já cadastradas no banco de dados
+      const sponsorIds = Array.from(new Set(parsed.ok.map((r) => r.sponsorId)));
+      let existingDbMedia: { sponsor_id: string; channel: string | null; created_at: string; reach: number | null }[] = [];
+
+      if (sponsorIds.length > 0) {
+        try {
+          const { data } = await supabase
+            .from("media_items")
+            .select("sponsor_id, channel, created_at, reach")
+            .in("sponsor_id", sponsorIds);
+          if (data) existingDbMedia = data;
+        } catch (dbErr) {
+          console.warn("Não foi possível carregar mídias anteriores para comparação:", dbErr);
+        }
+      }
+
+      // Marcar duplicatas encontradas contra o banco
+      const enrichedOk = parsed.ok.map((item) => {
+        if (item.isDuplicate) return item;
+
+        const itemDateStr = item.date.toISOString().slice(0, 10);
+        const match = existingDbMedia.find((db) => {
+          if (db.sponsor_id !== item.sponsorId) return false;
+          const dbChannel = (db.channel || "").toLowerCase().trim();
+          const itemVehicle = (item.vehicle || "").toLowerCase().trim();
+          if (dbChannel !== itemVehicle) return false;
+          const dbDateStr = db.created_at ? new Date(db.created_at).toISOString().slice(0, 10) : "";
+          return dbDateStr === itemDateStr;
+        });
+
+        if (match) {
+          return {
+            ...item,
+            isDuplicate: true,
+            duplicateReason: "Veiculação já cadastrada anteriormente no portal",
+          };
+        }
+        return item;
+      });
+
+      // Inicializa checkboxes: marca automaticamente APENAS as veiculações NÃO duplicadas
+      const nonDuplicateIds = new Set(enrichedOk.filter((r) => !r.isDuplicate).map((r) => r.id));
+      setSelectedIds(nonDuplicateIds);
+
+      setPreview({
+        ok: enrichedOk,
+        errors: parsed.errors,
+        duplicateBrands: parsed.duplicateBrands,
+        file: file.name,
+        fileObj: file,
+      });
+
+      const duplicateCount = enrichedOk.filter((r) => r.isDuplicate).length;
+      if (duplicateCount > 0) {
+        toast.warning(
+          `${duplicateCount} veiculação(ões) duplicada(s) detectada(s). Os checkboxes foram desmarcados automaticamente.`
+        );
+      }
     } catch {
       toast.error("Não foi possível ler a planilha. Envie um arquivo .xlsx.");
+    } finally {
+      setReading(false);
     }
   }
 
-  async function confirm() {
-    if (!preview?.ok.length) return;
-    setBusy(true);
-    // Processamento robusto no Backend Java (Apache POI) com fallback automático
-    if (preview.fileObj) {
-      try {
-        const javaResult = await importMediaSpreadsheet(preview.fileObj);
-        if (javaResult.success && javaResult.rowsImported > 0) {
-          setBusy(false);
-          toast.success(`${javaResult.rowsImported} veiculações importadas com sucesso via Java (Apache POI)!`);
-          if (javaResult.warnings?.length) {
-            javaResult.warnings.forEach((w) => toast.warning(w));
-          }
-          setPreview(null);
-          qc.invalidateQueries();
-          return;
-        }
-      } catch (backendErr) {
-        console.warn("Backend Java indisponível ou em fallback, prosseguindo com insert direto:", backendErr);
+  function toggleItem(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
       }
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (!preview) return;
+    if (selectedIds.size === preview.ok.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(preview.ok.map((r) => r.id)));
+    }
+  }
+
+  function selectOnlyNew() {
+    if (!preview) return;
+    setSelectedIds(new Set(preview.ok.filter((r) => !r.isDuplicate).map((r) => r.id)));
+  }
+
+  async function confirm() {
+    if (!preview) return;
+
+    const itemsToInsert = preview.ok.filter((r) => selectedIds.has(r.id));
+
+    if (itemsToInsert.length === 0) {
+      toast.error("Nenhuma veiculação marcada com checkbox para importação.");
+      return;
     }
 
+    setBusy(true);
     const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { timeZone: "UTC" });
+
     const { error } = await supabase.from("media_items").insert(
-      preview.ok.map((r) => ({
+      itemsToInsert.map((r) => ({
         sponsor_id: r.sponsorId,
         kind: "report",
         channel: r.vehicle,
@@ -73,36 +161,46 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
         created_at: r.date.toISOString(),
       })),
     );
+
     if (error) {
       setBusy(false);
       toast.error(error.message);
       return;
     }
+
+    // Registrar histórico da importação
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("media_imports").insert({
       file_name: preview.file,
-      rows_ok: preview.ok.length,
+      rows_ok: itemsToInsert.length,
       rows_error: preview.errors.length,
       errors: preview.errors,
     });
+
     setBusy(false);
-    toast.success(`${preview.ok.length} veiculações importadas`);
+    toast.success(`${itemsToInsert.length} veiculações importadas com sucesso!`);
     setPreview(null);
+    setSelectedIds(new Set());
     qc.invalidateQueries();
   }
+
+  const duplicatesInPreview = preview?.ok.filter((r) => r.isDuplicate) ?? [];
+  const isAllSelected = preview && preview.ok.length > 0 && selectedIds.size === preview.ok.length;
+  const isSomeSelected = selectedIds.size > 0 && preview && selectedIds.size < preview.ok.length;
 
   return (
     <Panel
       flush
       title="Importar planilha de mídia"
-      description="Colunas: Data, Veículo e, ao lado, uma coluna por patrocinador com o alcance. Para incluir um patrocinador, adicione uma coluna com o nome dele. Veículo: TV, Rádio, Digital ou Jornal. Células vazias ou 0 são ignoradas."
+      description="Colunas: Data, Veículo e uma coluna por patrocinador com o alcance. Células vazias ou 0 são ignoradas."
     >
       <div className="flex flex-wrap gap-2 border-t px-5 py-4">
         <Button type="button" variant="outline" onClick={downloadTemplate}>
           <Download className="h-4 w-4" /> Baixar modelo
         </Button>
-        <Button type="button" onClick={() => input.current?.click()}>
-          <Upload className="h-4 w-4" /> Enviar planilha
+        <Button type="button" disabled={reading} onClick={() => input.current?.click()} className="gap-2">
+          {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          {reading ? "Lendo planilha..." : "Enviar planilha"}
         </Button>
         <input
           ref={input}
@@ -117,41 +215,177 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
           }}
         />
       </div>
+
       {preview && (
         <>
           <PanelNote className="border-t">
             <FileSpreadsheet className="mr-1 inline h-4 w-4" aria-hidden />
-            {preview.file}: {preview.ok.length} linhas prontas, {preview.errors.length} com erro.
+            <strong>{preview.file}</strong>: {preview.ok.length} veiculações encontradas, {preview.errors.length} com erro.
           </PanelNote>
+
+          {/* Alerta de Marcas Duplicadas nas Colunas */}
+          {preview.duplicateBrands && preview.duplicateBrands.length > 0 && (
+            <div className="mx-5 my-2 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+              <span>
+                <strong>Atenção: Marcas duplicadas no cabeçalho:</strong> A(s) marca(s){" "}
+                <strong>{preview.duplicateBrands.join(", ")}</strong> aparece(m) em mais de uma coluna na planilha. As
+                colunas repetidas foram unificadas para prevenir duplicações.
+              </span>
+            </div>
+          )}
+
+          {/* Alerta de Veiculações Duplicadas com Checkboxes desmarcados */}
+          {duplicatesInPreview.length > 0 && (
+            <div className="mx-5 my-2 flex items-center justify-between gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600" />
+                <span>
+                  <strong>{duplicatesInPreview.length} veiculação(ões) duplicada(s) identificada(s):</strong> Os
+                  checkboxes dessas linhas foram <strong>desmarcados automaticamente</strong> para evitar duplicidade no
+                  relatório.
+                </span>
+              </div>
+              <Button type="button" size="sm" variant="ghost" onClick={selectOnlyNew} className="text-xs h-7">
+                Manter apenas novas
+              </Button>
+            </div>
+          )}
+
+          {/* Erros estruturais ou linhas inválidas */}
           {preview.errors.length > 0 && (
             <PanelList>
               {preview.errors.map((e, i) => (
-                <li key={i} className="text-destructive px-5 py-2 text-sm">
+                <li key={i} className="text-destructive px-5 py-2 text-xs">
                   Linha {e.line}: {e.message}
                 </li>
               ))}
             </PanelList>
           )}
+
+          {/* Tabela de Pré-visualização com Checkboxes */}
           {preview.ok.length > 0 && (
-            <PanelList>
-              {preview.ok.slice(0, 50).map((r, i) => (
-                <li key={i} className="grid grid-cols-4 gap-3 px-5 py-2 text-sm">
-                  <span className="truncate font-medium">{r.sponsorName}</span>
-                  <span>{r.date.toLocaleDateString("pt-BR", { timeZone: "UTC" })}</span>
-                  <span>{r.vehicle}</span>
-                  <span className="tabular text-right">{r.reach.toLocaleString("pt-BR")}</span>
-                </li>
-              ))}
-            </PanelList>
+            <div className="border-t">
+              {/* Barra de controle de seleção */}
+              <div className="flex items-center justify-between bg-muted/40 px-5 py-2.5 text-xs text-muted-foreground border-b">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    checked={isAllSelected ? true : isSomeSelected ? "indeterminate" : false}
+                    onCheckedChange={toggleAll}
+                    aria-label="Selecionar todas as veiculações"
+                  />
+                  <span className="font-medium text-foreground">
+                    {selectedIds.size} de {preview.ok.length} veiculação(ões) selecionada(s)
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {duplicatesInPreview.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={selectOnlyNew}
+                      className="text-primary hover:underline font-medium"
+                    >
+                      Apenas novas ({preview.ok.length - duplicatesInPreview.length})
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={toggleAll}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {selectedIds.size === preview.ok.length ? "Desmarcar todas" : "Selecionar todas"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Lista de veiculações */}
+              <div className="max-h-72 overflow-y-auto divide-y">
+                {preview.ok.map((r) => {
+                  const isChecked = selectedIds.has(r.id);
+                  return (
+                    <div
+                      key={r.id}
+                      onClick={() => toggleItem(r.id)}
+                      className={`flex items-center gap-3 px-5 py-2 text-xs cursor-pointer transition-colors ${
+                        isChecked
+                          ? "bg-background hover:bg-muted/30"
+                          : "opacity-60 bg-muted/10 hover:bg-muted/20"
+                      }`}
+                    >
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={() => toggleItem(r.id)}
+                          aria-label={`Incluir veiculação de ${r.sponsorName}`}
+                        />
+                      </div>
+
+                      <span className="font-mono text-muted-foreground w-12">#{r.line}</span>
+                      <span className={`w-44 truncate font-medium ${isChecked ? "text-foreground" : "line-through text-muted-foreground"}`}>
+                        {r.sponsorName}
+                      </span>
+                      <span className="w-24 text-muted-foreground">
+                        {r.date.toLocaleDateString("pt-BR", { timeZone: "UTC" })}
+                      </span>
+                      <span className="w-20 font-medium">{r.vehicle}</span>
+                      <span className="w-28 tabular-nums font-mono text-right text-foreground">
+                        {r.reach.toLocaleString("pt-BR")} alc.
+                      </span>
+
+                      {/* Tag de Duplicada */}
+                      {r.isDuplicate && (
+                        <span
+                          title={r.duplicateReason}
+                          className="ml-auto inline-flex items-center gap-1 rounded bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400"
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          {r.duplicateReason || "Duplicada"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
-          <div className="flex justify-end gap-2 border-t px-5 py-3">
-            <Button type="button" variant="ghost" onClick={() => setPreview(null)}>Cancelar</Button>
-            <Button type="button" disabled={busy || !preview.ok.length} onClick={confirm}>
-              Importar {preview.ok.length} linhas
-            </Button>
+
+          {/* Rodapé com Ação */}
+          <div className="flex items-center justify-between gap-2 border-t px-5 py-3 bg-muted/20">
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size > 0
+                ? `${selectedIds.size} veiculação(ões) pronta(s) para importação`
+                : "Selecione ao menos uma veiculação para importar"}
+            </span>
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setPreview(null)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={busy || selectedIds.size === 0}
+                onClick={confirm}
+                className="gap-2"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-4 w-4" />
+                    Importar {selectedIds.size} veiculações
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </>
       )}
+
       <ImportHistory />
     </Panel>
   );
@@ -163,59 +397,42 @@ type ImportRow = {
   imported_by_email: string | null;
   rows_ok: number;
   rows_error: number;
-  errors: RowError[];
   created_at: string;
 };
 
 function ImportHistory() {
-  const q = useQuery({
+  const query = useQuery({
     queryKey: ["media_imports"],
     queryFn: async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from("media_imports")
-        .select("*")
+        .select("id, file_name, imported_by_email, rows_ok, rows_error, created_at")
         .order("created_at", { ascending: false })
-        .limit(30);
-      if (error) throw error;
+        .limit(5);
+      if (error) return [] as ImportRow[];
       return (data ?? []) as ImportRow[];
     },
   });
+
+  const rows = query.data ?? [];
+  if (!rows.length) return null;
+
   return (
     <div className="border-t">
-      <p className="px-5 pt-4 pb-2 text-sm font-semibold">Histórico de importações</p>
-      {q.isPending ? (
-        <PanelNote>Carregando...</PanelNote>
-      ) : !q.data?.length ? (
-        <PanelNote>Nenhuma importação feita ainda.</PanelNote>
-      ) : (
-        <PanelList>
-          {q.data.map((r) => (
-            <li key={r.id} className="px-5 py-2.5 text-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium">
-                  {new Date(r.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} ·{" "}
-                  {r.imported_by_email ?? "—"}
-                </span>
-                <span className="tabular text-muted-foreground">
-                  {r.rows_ok} posts importados · {r.rows_error} com erro
-                </span>
-              </div>
-              <p className="text-muted-foreground truncate text-xs">{r.file_name}</p>
-              {r.errors?.length > 0 && (
-                <details className="mt-1 text-xs">
-                  <summary className="text-destructive cursor-pointer">Ver erros</summary>
-                  <ul className="mt-1 space-y-0.5">
-                    {r.errors.map((e, i) => (
-                      <li key={i} className="text-destructive">Linha {e.line}: {e.message}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </li>
-          ))}
-        </PanelList>
-      )}
+      <PanelNote>Últimas importações</PanelNote>
+      <PanelList>
+        {rows.map((r) => (
+          <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 text-xs">
+            <span className="truncate font-medium">{r.file_name}</span>
+            <span className="text-muted-foreground">
+              {new Date(r.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} ·{" "}
+              <strong className="text-foreground">{r.rows_ok}</strong> importadas
+              {r.rows_error > 0 && <span className="text-destructive font-medium"> ({r.rows_error} com erro)</span>}
+            </span>
+          </li>
+        ))}
+      </PanelList>
     </div>
   );
 }

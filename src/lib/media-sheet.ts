@@ -6,7 +6,18 @@ export const VEHICLES = ["TV", "Rádio", "Digital", "Jornal"] as const;
 type Cell = string | number | boolean | Date | null | undefined | unknown;
 type SponsorRef = { id: string; name: string; cnpj?: string | null };
 
-export type ParsedRow = { line: number; sponsorId: string; sponsorName: string; date: Date; vehicle: string; reach: number };
+export type ParsedRow = {
+  id: string;
+  line: number;
+  sponsorId: string;
+  sponsorName: string;
+  date: Date;
+  vehicle: string;
+  reach: number;
+  isDuplicate?: boolean;
+  duplicateReason?: string;
+};
+
 export type RowError = { line: number; message: string };
 
 const norm = (s: string) =>
@@ -38,25 +49,42 @@ function parseReach(v: Cell): number | null {
 export function parseMediaSheet(rows: readonly (readonly Cell[])[], sponsors: readonly SponsorRef[]) {
   const ok: ParsedRow[] = [];
   const errors: RowError[] = [];
+  const duplicateBrands: string[] = [];
   const head = rows[0] ?? [];
   const header = head.map((c) => norm(String(c ?? "")));
   const iDate = header.indexOf(norm("Data"));
   const iVeh = header.indexOf(norm("Veículo"));
   if (iDate < 0 || iVeh < 0) {
-    return { ok, errors: [{ line: 1, message: "Cabeçalho deve ter Data, Veículo e um patrocinador por coluna" }] };
+    return { ok, errors: [{ line: 1, message: "Cabeçalho deve ter Data, Veículo e um patrocinador por coluna" }], duplicateBrands };
   }
+
   const cols: { i: number; sponsor: SponsorRef }[] = [];
+  const seenSponsorIds = new Map<string, number>();
+
   head.forEach((c, i) => {
     if (i <= iVeh || i === iDate || blank(c)) return;
     const ref = String(c).trim();
     const sponsor =
       sponsors.find((s) => norm(s.name) === norm(ref)) ??
       (digits(ref).length >= 11 ? sponsors.find((s) => s.cnpj && digits(s.cnpj) === digits(ref)) : undefined);
-    if (sponsor) cols.push({ i, sponsor });
-    else errors.push({ line: 1, message: `patrocinador "${ref}" não encontrado (coluna ignorada)` });
+    if (sponsor) {
+      if (seenSponsorIds.has(sponsor.id)) {
+        duplicateBrands.push(sponsor.name);
+        errors.push({ line: 1, message: `Marca "${sponsor.name}" aparece em mais de uma coluna no cabeçalho (duplicada)` });
+      } else {
+        seenSponsorIds.set(sponsor.id, i);
+        cols.push({ i, sponsor });
+      }
+    } else {
+      errors.push({ line: 1, message: `patrocinador "${ref}" não encontrado (coluna ignorada)` });
+    }
   });
+
   if (!cols.length && !errors.length) errors.push({ line: 1, message: "Nenhum patrocinador nas colunas após Veículo" });
+
   const vehicles = new Map(VEHICLES.map((v) => [norm(v), v as string]));
+  const seenMediaInSheet = new Map<string, number>();
+
   rows.slice(1).forEach((r, k) => {
     const line = k + 2;
     if (r.every(blank)) return;
@@ -69,11 +97,31 @@ export function parseMediaSheet(rows: readonly (readonly Cell[])[], sponsors: re
     for (const { i, sponsor } of cols) {
       if (blank(r[i])) continue;
       const reach = parseReach(r[i]);
-      if (reach === null) problems.push(`alcance de "${sponsor.name}" deve ser um número`);
-      else if (reach > 0) found.push({ line, sponsorId: sponsor.id, sponsorName: sponsor.name, date: date!, vehicle: vehicle!, reach });
+      if (reach === null) {
+        problems.push(`alcance de "${sponsor.name}" deve ser um número`);
+      } else if (reach > 0 && date && vehicle) {
+        const key = `${sponsor.id}::${date.toISOString().slice(0, 10)}::${norm(vehicle)}`;
+        const prevLine = seenMediaInSheet.get(key);
+        const isDuplicate = prevLine !== undefined;
+        if (!isDuplicate) {
+          seenMediaInSheet.set(key, line);
+        }
+        found.push({
+          id: `${line}-${sponsor.id}-${i}`,
+          line,
+          sponsorId: sponsor.id,
+          sponsorName: sponsor.name,
+          date,
+          vehicle,
+          reach,
+          isDuplicate,
+          duplicateReason: isDuplicate ? `Duplicada da linha #${prevLine} da planilha` : undefined,
+        });
+      }
     }
     if (problems.length) errors.push({ line, message: problems.join("; ") });
     else ok.push(...found);
   });
-  return { ok, errors };
+
+  return { ok, errors, duplicateBrands };
 }
