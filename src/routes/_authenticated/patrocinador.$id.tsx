@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Palette,
+  SlidersHorizontal,
   Ticket,
   HelpCircle,
   type LucideIcon,
@@ -102,6 +103,15 @@ function SponsorNavContent({
             />
           );
         })}
+        {isAdmin && (
+          <NavItem
+            to="/patrocinador/$id/acessos"
+            params={{ id }}
+            label="Exceções de acesso"
+            icon={SlidersHorizontal}
+            exact
+          />
+        )}
       </NavGroup>
 
       <NavGroup label="Resultados">

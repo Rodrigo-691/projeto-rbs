@@ -7,7 +7,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileSection } from "@/components/FileSection";
 import { Panel, PanelList, PanelNote } from "@/components/Panel";
 import { TabGate } from "@/components/TabGate";
-import { TabOverrides } from "@/components/TabOverrides";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,11 +21,6 @@ export const Route = createFileRoute("/_authenticated/patrocinador/$id/perfil")(
   component: Perfil,
 });
 
-function AdminTabOverrides({ id }: { id: string }) {
-  const sponsor = useQuery(sponsorQuery(id));
-  return sponsor.data ? <TabOverrides sponsor={sponsor.data} /> : null;
-}
-
 function Perfil() {
   const { id } = Route.useParams();
   const me = useMe();
@@ -35,7 +29,6 @@ function Perfil() {
     <TabGate id={id} tab="perfil" title="Perfil do cliente" intro="Dados da marca, cota contratada e acessos liberados.">
       <ProfileForm id={id} isAdmin={isAdmin} />
       <Members id={id} isAdmin={isAdmin} />
-      {isAdmin && <AdminTabOverrides id={id} />}
       <FileSection sponsorId={id} tab="perfil" category="plano_comercial" title="Plano comercial" description="Tudo o que a marca comprou e vai receber." uploader="admin" />
       <FileSection sponsorId={id} tab="perfil" category="doc_ingressos" title="Documento para compra de ingressos" description="Comprovante para compra com valor de patrocinador." uploader="admin" />
     </TabGate>

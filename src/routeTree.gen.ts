@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedPatrocinadorIdRouteImport } from './routes/_authenticated/patrocinador.$id'
 import { Route as AuthenticatedPatrocinadorIdIndexRouteImport } from './routes/_authenticated/patrocinador.$id.index'
+import { Route as AuthenticatedPatrocinadorIdAcessosRouteImport } from './routes/_authenticated/patrocinador.$id.acessos'
 import { Route as AuthenticatedPatrocinadorIdAplicacoesRouteImport } from './routes/_authenticated/patrocinador.$id.aplicacoes'
 import { Route as AuthenticatedPatrocinadorIdContratoRouteImport } from './routes/_authenticated/patrocinador.$id.contrato'
 import { Route as AuthenticatedPatrocinadorIdCortesiasRouteImport } from './routes/_authenticated/patrocinador.$id.cortesias'
@@ -61,6 +62,12 @@ const AuthenticatedPatrocinadorIdIndexRoute =
   AuthenticatedPatrocinadorIdIndexRouteImport.update({
     id: '/',
     path: '/',
+    getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
+  } as any)
+const AuthenticatedPatrocinadorIdAcessosRoute =
+  AuthenticatedPatrocinadorIdAcessosRouteImport.update({
+    id: '/acessos',
+    path: '/acessos',
     getParentRoute: () => AuthenticatedPatrocinadorIdRoute,
   } as any)
 const AuthenticatedPatrocinadorIdAplicacoesRoute =
@@ -130,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/patrocinador/$id': typeof AuthenticatedPatrocinadorIdRouteWithChildren
+  '/patrocinador/$id/acessos': typeof AuthenticatedPatrocinadorIdAcessosRoute
   '/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
   '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
@@ -147,6 +155,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/painel': typeof AuthenticatedPainelRoute
+  '/patrocinador/$id/acessos': typeof AuthenticatedPatrocinadorIdAcessosRoute
   '/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
   '/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
@@ -167,6 +176,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/patrocinador/$id': typeof AuthenticatedPatrocinadorIdRouteWithChildren
+  '/_authenticated/patrocinador/$id/acessos': typeof AuthenticatedPatrocinadorIdAcessosRoute
   '/_authenticated/patrocinador/$id/aplicacoes': typeof AuthenticatedPatrocinadorIdAplicacoesRoute
   '/_authenticated/patrocinador/$id/contrato': typeof AuthenticatedPatrocinadorIdContratoRoute
   '/_authenticated/patrocinador/$id/cortesias': typeof AuthenticatedPatrocinadorIdCortesiasRoute
@@ -187,6 +197,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/painel'
     | '/patrocinador/$id'
+    | '/patrocinador/$id/acessos'
     | '/patrocinador/$id/aplicacoes'
     | '/patrocinador/$id/contrato'
     | '/patrocinador/$id/cortesias'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/painel'
+    | '/patrocinador/$id/acessos'
     | '/patrocinador/$id/aplicacoes'
     | '/patrocinador/$id/contrato'
     | '/patrocinador/$id/cortesias'
@@ -223,6 +235,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/painel'
     | '/_authenticated/patrocinador/$id'
+    | '/_authenticated/patrocinador/$id/acessos'
     | '/_authenticated/patrocinador/$id/aplicacoes'
     | '/_authenticated/patrocinador/$id/contrato'
     | '/_authenticated/patrocinador/$id/cortesias'
@@ -292,6 +305,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/patrocinador/$id/'
       preLoaderRoute: typeof AuthenticatedPatrocinadorIdIndexRouteImport
+      parentRoute: typeof AuthenticatedPatrocinadorIdRoute
+    }
+    '/_authenticated/patrocinador/$id/acessos': {
+      id: '/_authenticated/patrocinador/$id/acessos'
+      path: '/acessos'
+      fullPath: '/patrocinador/$id/acessos'
+      preLoaderRoute: typeof AuthenticatedPatrocinadorIdAcessosRouteImport
       parentRoute: typeof AuthenticatedPatrocinadorIdRoute
     }
     '/_authenticated/patrocinador/$id/aplicacoes': {
@@ -368,6 +388,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedPatrocinadorIdRouteChildren {
+  AuthenticatedPatrocinadorIdAcessosRoute: typeof AuthenticatedPatrocinadorIdAcessosRoute
   AuthenticatedPatrocinadorIdAplicacoesRoute: typeof AuthenticatedPatrocinadorIdAplicacoesRoute
   AuthenticatedPatrocinadorIdContratoRoute: typeof AuthenticatedPatrocinadorIdContratoRoute
   AuthenticatedPatrocinadorIdCortesiasRoute: typeof AuthenticatedPatrocinadorIdCortesiasRoute
@@ -383,6 +404,8 @@ interface AuthenticatedPatrocinadorIdRouteChildren {
 
 const AuthenticatedPatrocinadorIdRouteChildren: AuthenticatedPatrocinadorIdRouteChildren =
   {
+    AuthenticatedPatrocinadorIdAcessosRoute:
+      AuthenticatedPatrocinadorIdAcessosRoute,
     AuthenticatedPatrocinadorIdAplicacoesRoute:
       AuthenticatedPatrocinadorIdAplicacoesRoute,
     AuthenticatedPatrocinadorIdContratoRoute:
