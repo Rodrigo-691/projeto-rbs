@@ -150,7 +150,7 @@ export function parseCourtesyGrid(matrix: unknown[][]): ParseCourtesySheetResult
   };
 }
 
-export async function downloadCourtesyTemplate(rules?: CourtesyQuotaRule[], sponsorName?: string) {
+export async function downloadCourtesyTemplate(_rules?: CourtesyQuotaRule[], sponsorName?: string) {
   const { default: writeXlsxFile } = await import("write-excel-file/browser");
 
   const headers = [
@@ -162,45 +162,32 @@ export async function downloadCourtesyTemplate(rules?: CourtesyQuotaRule[], spon
     { value: "Tipo de Ingresso", fontWeight: "bold" as const },
   ];
 
-  let sampleRows: any[][];
-
-  if (rules && rules.length > 0) {
-    sampleRows = rules.slice(0, 5).map((rule, idx) => [
-      { type: String, value: `Convidado Exemplo ${idx + 1}` },
-      { type: String, value: `123.456.789-0${idx}` },
-      { type: String, value: `convidado${idx + 1}@empresa.com.br` },
-      { type: String, value: "(51) 99999-0000" },
-      { type: String, value: rule.sector },
-      { type: String, value: rule.ticket_type },
-    ]);
-  } else {
-    sampleRows = [
-      [
-        { type: String, value: "Mariana Silva" },
-        { type: String, value: "123.456.789-00" },
-        { type: String, value: "mariana.silva@empresa.com.br" },
-        { type: String, value: "(51) 99999-1111" },
-        { type: String, value: "Camarote" },
-        { type: String, value: "Passaporte" },
-      ],
-      [
-        { type: String, value: "Rodrigo Santos" },
-        { type: String, value: "234.567.890-11" },
-        { type: String, value: "rodrigo.santos@empresa.com.br" },
-        { type: String, value: "(51) 99999-2222" },
-        { type: String, value: "Arena" },
-        { type: String, value: "Sábado" },
-      ],
-      [
-        { type: String, value: "Fernanda Lima" },
-        { type: String, value: "345.678.901-22" },
-        { type: String, value: "fernanda.lima@empresa.com.br" },
-        { type: String, value: "(51) 99999-3333" },
-        { type: String, value: "Arena" },
-        { type: String, value: "Domingo" },
-      ],
-    ];
-  }
+  const sampleRows = [
+    [
+      { type: String, value: "Mariana Silva" },
+      { type: String, value: "123.456.789-00" },
+      { type: String, value: "mariana.silva@empresa.com.br" },
+      { type: String, value: "(51) 99999-1111" },
+      { type: String, value: "Camarote" },
+      { type: String, value: "Passaporte" },
+    ],
+    [
+      { type: String, value: "Rodrigo Santos" },
+      { type: String, value: "234.567.890-11" },
+      { type: String, value: "rodrigo.santos@empresa.com.br" },
+      { type: String, value: "(51) 99999-2222" },
+      { type: String, value: "Arena" },
+      { type: String, value: "Sábado" },
+    ],
+    [
+      { type: String, value: "Fernanda Lima" },
+      { type: String, value: "345.678.901-22" },
+      { type: String, value: "fernanda.lima@empresa.com.br" },
+      { type: String, value: "(51) 99999-3333" },
+      { type: String, value: "Arena" },
+      { type: String, value: "Domingo" },
+    ],
+  ];
 
   const fileName = sponsorName
     ? `modelo-cortesias-${sponsorName.toLowerCase().replace(/[^a-z0-9]/g, "-")}.xlsx`
@@ -218,20 +205,12 @@ export async function downloadCourtesyTemplate(rules?: CourtesyQuotaRule[], spon
   }).toFile(fileName);
 }
 
-export function downloadCourtesyCsvTemplate(rules?: CourtesyQuotaRule[], sponsorName?: string) {
-  let sampleRows: string[];
-
-  if (rules && rules.length > 0) {
-    sampleRows = rules.slice(0, 5).map((rule, idx) =>
-      `Convidado Exemplo ${idx + 1},123.456.789-0${idx},convidado${idx + 1}@empresa.com.br,(51) 99999-0000,${rule.sector},${rule.ticket_type}`
-    );
-  } else {
-    sampleRows = [
-      "Mariana Silva,123.456.789-00,mariana.silva@empresa.com.br,(51) 99999-1111,Camarote,Passaporte",
-      "Rodrigo Santos,234.567.890-11,rodrigo.santos@empresa.com.br,(51) 99999-2222,Arena,Sábado",
-      "Fernanda Lima,345.678.901-22,fernanda.lima@empresa.com.br,(51) 99999-3333,Arena,Domingo",
-    ];
-  }
+export function downloadCourtesyCsvTemplate(_rules?: CourtesyQuotaRule[], sponsorName?: string) {
+  const sampleRows = [
+    "Mariana Silva,123.456.789-00,mariana.silva@empresa.com.br,(51) 99999-1111,Camarote,Passaporte",
+    "Rodrigo Santos,234.567.890-11,rodrigo.santos@empresa.com.br,(51) 99999-2222,Arena,Sábado",
+    "Fernanda Lima,345.678.901-22,fernanda.lima@empresa.com.br,(51) 99999-3333,Arena,Domingo",
+  ];
 
   const csvContent = "Nome Completo,CPF,E-mail,Telefone / WhatsApp,Setor,Tipo de Ingresso\n" + sampleRows.join("\n") + "\n";
   const fileName = sponsorName
