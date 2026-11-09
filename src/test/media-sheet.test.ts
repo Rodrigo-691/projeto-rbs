@@ -40,4 +40,24 @@ describe("Media spreadsheet with one column per sponsor", () => {
   it("requires Data and Veículo headers", () => {
     expect(parseMediaSheet([["Nome", "Alcance"]], SPONSORS).errors[0]?.line).toBe(1);
   });
+
+  it("correctly parses the official media model spreadsheet with Pepsi, Areia Logistica, Heineken", () => {
+    const sponsors = [
+      { id: "pepsi-id", name: "Pepsi" },
+      { id: "areia-id", name: "Areia Logistica" },
+      { id: "heineken-id", name: "Heineken" },
+    ];
+    const rawRows = [
+      ["Data", "Veículo", "Pepsi", "Areia Logistica", "Heineken"],
+      ["2026-10-01", "Digital", 100000, 0, 110000],
+      ["2026-10-13", "Rádio", 10000, 30000, 20000],
+      ["2026-11-05", "TV", 300000, 120000, 400000],
+      ["2026-10-24", "Jornal", 130000, 0, 0],
+    ];
+    const { ok, errors } = parseMediaSheet(rawRows, sponsors);
+    expect(errors).toEqual([]);
+    expect(ok).toHaveLength(9);
+    expect(ok.find((r) => r.sponsorName === "Pepsi" && r.vehicle === "Digital")?.reach).toBe(100000);
+    expect(ok.find((r) => r.sponsorName === "Heineken" && r.vehicle === "TV")?.reach).toBe(400000);
+  });
 });

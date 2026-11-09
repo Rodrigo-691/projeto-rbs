@@ -29,22 +29,91 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
 
   async function downloadTemplate() {
     const { default: writeXlsxFile } = await import("write-excel-file/browser");
-    const names = sponsors.length ? sponsors.map((x) => x.name) : [sponsorLabel ?? "Nome do patrocinador"];
-    await writeXlsxFile(
+    const headers = [
+      { value: "Data", fontWeight: "bold" as const },
+      { value: "Veículo", fontWeight: "bold" as const },
+      { value: "Pepsi", fontWeight: "bold" as const },
+      { value: "Areia Logistica", fontWeight: "bold" as const },
+      { value: "Heineken", fontWeight: "bold" as const },
+    ];
+
+    const rows = [
+      headers,
       [
-        [...FIXED_HEADERS, ...names].map((h) => ({ value: h, fontWeight: "bold" as const })),
-        [{ value: new Date(), type: Date, format: "dd/mm/yyyy" }, { value: "TV" }, ...names.map(() => ({ value: 0, type: Number }))],
+        { value: new Date(Date.UTC(2026, 9, 1, 12)), type: Date, format: "yyyy-mm-dd" },
+        { value: "Digital" },
+        { value: 100000, type: Number },
+        { value: 0, type: Number },
+        { value: 110000, type: Number },
       ],
-      { columns: [{ width: 14 }, { width: 14 }, ...names.map(() => ({ width: 22 }))] },
-    ).toFile("modelo-midia-planeta-atlantida.xlsx");
+      [
+        { value: new Date(Date.UTC(2026, 9, 13, 12)), type: Date, format: "yyyy-mm-dd" },
+        { value: "Rádio" },
+        { value: 10000, type: Number },
+        { value: 30000, type: Number },
+        { value: 20000, type: Number },
+      ],
+      [
+        { value: new Date(Date.UTC(2026, 10, 5, 12)), type: Date, format: "yyyy-mm-dd" },
+        { value: "TV" },
+        { value: 300000, type: Number },
+        { value: 120000, type: Number },
+        { value: 400000, type: Number },
+      ],
+      [
+        { value: new Date(Date.UTC(2026, 9, 24, 12)), type: Date, format: "yyyy-mm-dd" },
+        { value: "Jornal" },
+        { value: 130000, type: Number },
+        { value: 0, type: Number },
+        { value: 0, type: Number },
+      ],
+    ];
+
+    await writeXlsxFile(rows, {
+      columns: [
+        { width: 14 },
+        { width: 14 },
+        { width: 16 },
+        { width: 18 },
+        { width: 16 },
+      ],
+    }).toFile("modelo-midia-planeta-atlantida.xlsx");
+  }
+
+  function downloadCsvTemplate() {
+    const csvContent =
+      "Data,Veículo,Pepsi,Areia Logistica,Heineken\n" +
+      "2026-10-01,Digital,100000,0,110000\n" +
+      "2026-10-13,Rádio,10000,30000,20000\n" +
+      "2026-11-05,TV,300000,120000,400000\n" +
+      "2026-10-24,Jornal,130000,0,0\n";
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "modelo-midia-planeta-atlantida.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   }
 
   async function onFile(file: File) {
     setReading(true);
     try {
-      const { readSheet } = await import("read-excel-file/browser");
-      const rows = await readSheet(file);
-      const parsed = parseMediaSheet(rows as unknown[][], sponsors);
+      let rows: unknown[][] = [];
+      if (file.name.endsWith(".csv") || file.type === "text/csv") {
+        const text = await file.text();
+        rows = text
+          .split(/\r?\n/)
+          .filter((line) => line.trim().length > 0)
+          .map((line) => line.split(",").map((c) => c.trim().replace(/^["'](.*)["']$/, "$1")));
+      } else {
+        const { readSheet } = await import("read-excel-file/browser");
+        rows = (await readSheet(file)) as unknown[][];
+      }
+      const parsed = parseMediaSheet(rows, sponsors);
 
       // Verificação contra veiculações já cadastradas no banco de dados
       const sponsorIds = Array.from(new Set(parsed.ok.map((r) => r.sponsorId)));
@@ -105,7 +174,7 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
         );
       }
     } catch {
-      toast.error("Não foi possível ler a planilha. Envie um arquivo .xlsx.");
+      toast.error("Não foi possível ler a planilha. Envie um arquivo .xlsx ou .csv.");
     } finally {
       setReading(false);
     }
@@ -195,8 +264,11 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
       description="Colunas: Data, Veículo e uma coluna por patrocinador com o alcance. Células vazias ou 0 são ignoradas."
     >
       <div className="flex flex-wrap gap-2 border-t px-5 py-4">
-        <Button type="button" variant="outline" onClick={downloadTemplate}>
-          <Download className="h-4 w-4" /> Baixar modelo
+        <Button type="button" variant="outline" onClick={downloadTemplate} className="gap-2">
+          <Download className="h-4 w-4" /> Baixar modelo (.xlsx)
+        </Button>
+        <Button type="button" variant="outline" onClick={downloadCsvTemplate} className="gap-2">
+          <Download className="h-4 w-4" /> Baixar modelo (.csv)
         </Button>
         <Button type="button" disabled={reading} onClick={() => input.current?.click()} className="gap-2">
           {reading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
@@ -205,7 +277,7 @@ export function MediaSheetImport({ sponsors, sponsorLabel }: { sponsors: Sponsor
         <input
           ref={input}
           type="file"
-          accept=".xlsx"
+          accept=".xlsx,.csv"
           className="hidden"
           aria-label="Planilha de mídia"
           onChange={(e) => {
