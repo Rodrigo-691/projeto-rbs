@@ -126,7 +126,16 @@ export function SponsorBatchImport() {
         { value: "Subcota", type: String },
       ];
 
-      await writeXlsxFile([headers, sampleRow1, sampleRow2, sampleRow3], {
+      const sampleRow4 = [
+        { value: "Claro", type: String },
+        { value: "66.777.888/3333-44", type: String },
+        { value: "Telefonica", type: String },
+        { value: "Pedro Silva", type: String },
+        { value: "(51) 93333-5555", type: String },
+        { value: "Master", type: String },
+      ];
+
+      await writeXlsxFile([headers, sampleRow1, sampleRow2, sampleRow3, sampleRow4], {
         columns: [
           { width: 28 },
           { width: 22 },
@@ -144,12 +153,32 @@ export function SponsorBatchImport() {
     }
   }
 
+  function handleDownloadCsvTemplate() {
+    const csvContent =
+      "Nome,CNPJ,Segmento,Ponto Focal Comercial,Telefone / WhatsApp,Cota\n" +
+      "Budweiser,12.345.678/0001-90,Bebidas,Carlos Silva,(51) 99999-9999,Master\n" +
+      "Banrisul,98.765.432/0001-10,Banco,Mariana Costa,(51) 98888-8888,Subcota G\n" +
+      "Panvel,11.222.333/0001-44,Farmácias,Felipe Ramos,(51) 97777-7777,Subcota\n" +
+      "Claro,66.777.888/3333-44,Telefonica,Pedro Silva,(51) 93333-5555,Master\n";
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "modelo-importacao-patrocinadores.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast.success("Modelo CSV baixado com sucesso!");
+  }
+
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.endsWith(".xlsx")) {
-      toast.error("Por favor, envie um arquivo de planilha no formato .xlsx");
+    if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".csv") && file.type !== "text/csv") {
+      toast.error("Por favor, envie um arquivo de planilha no formato .xlsx ou .csv");
       return;
     }
 
@@ -158,8 +187,17 @@ export function SponsorBatchImport() {
     setParsing(true);
 
     try {
-      const { readSheet } = await import("read-excel-file/browser");
-      const rows = (await readSheet(file)) as any[][];
+      let rows: any[][] = [];
+      if (file.name.endsWith(".csv") || file.type === "text/csv") {
+        const text = await file.text();
+        rows = text
+          .split(/\r?\n/)
+          .filter((line) => line.trim().length > 0)
+          .map((line) => line.split(",").map((c) => c.trim().replace(/^["'](.*)["']$/, "$1")));
+      } else {
+        const { readSheet } = await import("read-excel-file/browser");
+        rows = (await readSheet(file)) as any[][];
+      }
 
       if (!rows || rows.length < 2) {
         toast.error("A planilha está vazia ou sem linhas de dados.");
@@ -343,12 +381,18 @@ export function SponsorBatchImport() {
                   </li>
                 </ul>
 
-                <div className="mt-3 flex items-center justify-between border-t pt-2.5">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-2.5">
                   <span>Baixe a planilha pronta com as colunas padronizadas:</span>
-                  <Button type="button" size="sm" variant="secondary" onClick={handleDownloadTemplate} className="gap-1.5">
-                    <Download className="h-3.5 w-3.5" />
-                    Baixar modelo (.xlsx)
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" size="sm" variant="secondary" onClick={handleDownloadTemplate} className="gap-1.5">
+                      <Download className="h-3.5 w-3.5" />
+                      Baixar modelo (.xlsx)
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={handleDownloadCsvTemplate} className="gap-1.5">
+                      <Download className="h-3.5 w-3.5" />
+                      Baixar modelo (.csv)
+                    </Button>
+                  </div>
                 </div>
               </div>
 
@@ -357,7 +401,7 @@ export function SponsorBatchImport() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".xlsx"
+                  accept=".xlsx,.csv"
                   className="hidden"
                   id="sponsor-sheet-input"
                   onChange={handleFileSelected}
@@ -371,7 +415,7 @@ export function SponsorBatchImport() {
                     {parsing ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
                   </div>
                   <span className="text-sm font-semibold">
-                    {parsing ? "Lendo e validando planilha..." : "Clique para selecionar a planilha (.xlsx)"}
+                    {parsing ? "Lendo e validando planilha..." : "Clique para selecionar a planilha (.xlsx ou .csv)"}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     Você poderá selecionar individualmente as marcas antes de confirmar

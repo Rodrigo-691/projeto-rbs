@@ -106,4 +106,23 @@ describe("parseSponsorSheet", () => {
     expect(res.valid.length).toBe(0);
     expect(res.invalid.length).toBe(3);
   });
+
+  it("correctly parses the official sponsor template spreadsheet with Budweiser, Banrisul, Panvel and Claro", () => {
+    const rawRows = [
+      ["Nome", "CNPJ", "Segmento", "Ponto Focal Comercial", "Telefone / WhatsApp", "Cota"],
+      ["Budweiser", "12.345.678/0001-90", "Bebidas", "Carlos Silva", "(51) 99999-9999", "Master"],
+      ["Banrisul", "98.765.432/0001-10", "Banco", "Mariana Costa", "(51) 98888-8888", "Subcota G"],
+      ["Panvel", "11.222.333/0001-44", "Farmácias", "Felipe Ramos", "(51) 97777-7777", "Subcota"],
+      ["Claro", "66.777.888/3333-44", "Telefonica", "Pedro Silva", "(51) 93333-5555", "Master"],
+    ];
+    const res = parseSponsorSheet(rawRows, []);
+    expect(res.valid).toHaveLength(4);
+    expect(res.invalid).toHaveLength(0);
+    expect(res.valid.map((s) => [s.name, s.quota])).toEqual([
+      ["Budweiser", "master"],
+      ["Banrisul", "subcota_g"],
+      ["Panvel", "subcota"],
+      ["Claro", "master"],
+    ]);
+  });
 });
