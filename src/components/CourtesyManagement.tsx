@@ -43,6 +43,7 @@ import {
 import { BUCKET, type Sponsor } from "@/lib/portal";
 import {
   downloadCourtesyTemplate,
+  downloadCourtesyCsvTemplate,
   exportCourtesiesToExcel,
   parseCourtesyGrid,
   type CourtesyQuotaRule,
@@ -84,23 +85,33 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
   const [isQuotaOpen, setIsQuotaOpen] = useState(false);
 
   // Extract current rules from sponsor
-  const rawRules = (sponsor as any).courtesy_quota_rules;
   const currentRules: CourtesyQuotaRule[] = useMemo(() => {
-    if (Array.isArray(rawRules) && rawRules.length > 0) {
-      return rawRules;
+    let raw = (sponsor as any)?.courtesy_quota_rules;
+    if (typeof raw === "string") {
+      try {
+        raw = JSON.parse(raw);
+      } catch (e) {
+        console.warn("Failed to parse courtesy_quota_rules string:", e);
+      }
+    }
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((r: any) => ({
+        ...r,
+        quantity: Math.max(0, Number(r.quantity) || 0),
+      }));
     }
     if ((sponsor.courtesy_quota ?? 0) > 0) {
       return [
         {
           id: "default-rule-1",
-          sector: "Camarote",
+          sector: "Arena",
           ticket_type: "Passaporte",
           quantity: sponsor.courtesy_quota ?? 0,
         },
       ];
     }
     return [];
-  }, [rawRules, sponsor.courtesy_quota]);
+  }, [(sponsor as any)?.courtesy_quota_rules, sponsor.courtesy_quota]);
 
   const [rulesInput, setRulesInput] = useState<CourtesyQuotaRule[]>([]);
 
@@ -388,9 +399,18 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
     if (!file) return;
 
     try {
-      const { default: readXlsxFile } = await import("read-excel-file/browser");
-      const matrix = await readXlsxFile(file);
-      const res = parseCourtesyGrid(matrix as unknown[][]);
+      let matrix: unknown[][] = [];
+      if (file.name.endsWith(".csv") || file.type === "text/csv") {
+        const text = await file.text();
+        matrix = text
+          .split(/\r?\n/)
+          .filter((line) => line.trim().length > 0)
+          .map((line) => line.split(",").map((c) => c.trim().replace(/^["'](.*)["']$/, "$1")));
+      } else {
+        const { default: readXlsxFile } = await import("read-excel-file/browser");
+        matrix = (await readXlsxFile(file)) as unknown[][];
+      }
+      const res = parseCourtesyGrid(matrix);
 
       if (res.errors.length > 0 && res.rows.length === 0) {
         toast.error(res.errors[0]);
@@ -546,7 +566,7 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
         type="file"
         ref={fileInputRef}
         onChange={handleFileSelect}
-        accept=".xlsx,.xls"
+        accept=".xlsx,.xls,.csv"
         className="hidden"
       />
 
@@ -559,18 +579,49 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
             <Button
               variant="outline"
               size="sm"
-              onClick={() => downloadCourtesyTemplate(currentRules, sponsor.name)}
+              onClick={async () => {
+                try {
+                  await downloadCourtesyTemplate(currentRules, sponsor.name);
+                  toast.success("Modelo da planilha de cortesias (.xlsx) baixado!");
+                } catch (err: any) {
+                  toast.error(`Erro ao baixar modelo: ${err?.message || "Tente novamente"}`);
+                }
+              }}
               className="text-xs"
             >
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Baixar modelo (.xlsx)
             </Button>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                try {
+                  downloadCourtesyCsvTemplate(currentRules, sponsor.name);
+                  toast.success("Modelo CSV de cortesias baixado!");
+                } catch (err: any) {
+                  toast.error(`Erro ao baixar CSV: ${err?.message || "Tente novamente"}`);
+                }
+              }}
+              className="text-xs"
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Baixar modelo (.csv)
+            </Button>
+
             {list.length > 0 && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => exportCourtesiesToExcel(list, sponsor.name)}
+                onClick={async () => {
+                  try {
+                    await exportCourtesiesToExcel(list, sponsor.name);
+                    toast.success("Lista de cortesias exportada com sucesso!");
+                  } catch (err: any) {
+                    toast.error(`Erro ao exportar lista: ${err?.message || "Tente novamente"}`);
+                  }
+                }}
                 className="text-xs"
               >
                 <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
@@ -846,11 +897,34 @@ export function CourtesyManagement({ sponsorId, sponsor, isAdmin }: CourtesyMana
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => downloadCourtesyTemplate(currentRules, sponsor.name)}
+                onClick={async () => {
+                  try {
+                    await downloadCourtesyTemplate(currentRules, sponsor.name);
+                    toast.success("Modelo da planilha de cortesias (.xlsx) baixado!");
+                  } catch (err: any) {
+                    toast.error(`Erro ao baixar modelo: ${err?.message || "Tente novamente"}`);
+                  }
+                }}
                 className="text-xs"
               >
                 <Download className="mr-1.5 h-3.5 w-3.5" />
                 Baixar modelo (.xlsx)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  try {
+                    downloadCourtesyCsvTemplate(currentRules, sponsor.name);
+                    toast.success("Modelo CSV de cortesias baixado!");
+                  } catch (err: any) {
+                    toast.error(`Erro ao baixar CSV: ${err?.message || "Tente novamente"}`);
+                  }
+                }}
+                className="text-xs"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Baixar modelo (.csv)
               </Button>
               {isAdmin && (
                 <Button
